@@ -43,3 +43,12 @@ wandb/
 !/latentsync/utils/mask.png
 /checkpoints/
 !/assets/*
+
+
+results/
+error/
+venv/
+example/
+*.whl
+
+go-api-conda.bat
