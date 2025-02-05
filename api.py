@@ -1,6 +1,7 @@
 import argparse
 import gc
 import os
+import random
 from datetime import datetime
 from pathlib import Path
 
@@ -102,6 +103,15 @@ def create_args(
     )
 
 
+def generate_seed():
+    seed = random.randint(1, 100000000)
+    logging.info(f'seed: {seed}')
+    return {
+        "__type__": "update",
+        "value": seed
+    }
+
+
 # 定义一个函数进行显存清理
 def clear_cuda_cache():
     """
@@ -180,7 +190,6 @@ async def do(
         audio: UploadFile = File(..., description="上传的音频文件"),
         guidance_scale: float = Form(default=1.0, description="指导尺度（浮点数，默认值为 1.0）"),
         inference_steps: int = Form(default=20, description="推理步数（整数，默认值为 20）"),
-        seed: int = Form(default=1247, description="随机种子（整数，默认值为 1247）"),
 ):
     """
     处理视频和音频，生成带有字幕的视频。
@@ -205,6 +214,9 @@ async def do(
             reduce_noise_enabled=False
         )
 
+        seed_data = generate_seed()
+        seed = seed_data["value"]
+
         output_path = process_video(
             video_path=video_upload,
             audio_path=audio_upload,
@@ -221,9 +233,9 @@ async def do(
             "name": os.path.basename(output_path),
             "range": bbox_range
         })
-    except Exception as ex:
-        TextProcessor.log_error(ex)
-        return JSONResponse({"errcode": -1, "errmsg": str(ex)})
+    except Exception as e:
+        TextProcessor.log_error(e)
+        return JSONResponse({"errcode": -1, "errmsg": str(e)})
     finally:
         # 删除过期文件
         delete_old_files_and_folders(result_dir, 1)
