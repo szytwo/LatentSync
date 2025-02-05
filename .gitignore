@@ -49,5 +49,6 @@ wandb/
 /error/
 /example/
 *.whl
+.gradio/
 
 go-api-conda.bat
