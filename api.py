@@ -31,7 +31,7 @@ def process_video(
         seed,
 ):
     # Create the temp directory if it doesn't exist
-    output_dir = Path("./results/output")
+    output_dir = Path(result_dir / "output")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Convert paths to absolute Path objects and normalize them
@@ -189,12 +189,13 @@ async def do(
         )
         bbox_range = ''
         # 返回视频响应
-        return JSONResponse(
-            {"errcode": 0, "errmsg": "ok",
-             "video_path": output_path,
-             "name": os.path.basename(output_path),
-             "range": bbox_range
-             })
+        return JSONResponse({
+            "errcode": 0,
+            "errmsg": "ok",
+            "video_path": output_path,
+            "name": os.path.basename(output_path),
+            "range": bbox_range
+        })
     except Exception as ex:
         TextProcessor.log_error(ex)
         return JSONResponse({"errcode": -1, "errmsg": str(ex)})
