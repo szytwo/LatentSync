@@ -1,6 +1,5 @@
 import os
 import subprocess
-from pathlib import Path
 
 from fastapi import UploadFile
 
@@ -26,12 +25,8 @@ class VideoProcessor:
         :param upload_file: FastAPI 的上传文件对象
         :return: 保存后的文件路径
         """
-        # 从上传文件名提取基础名称（无扩展名）
-        video_name = Path(upload_file.filename).stem
         # 构建保存路径
-        video_dir = os.path.join(self.input_dir, video_name)
-        os.makedirs(video_dir, exist_ok=True)  # 创建目录（如果不存在）
-        upload_path = os.path.join(video_dir, upload_file.filename)
+        upload_path = os.path.join(self.input_dir, upload_file.filename)
         # 如果同名文件已存在，先删除
         if os.path.exists(upload_path):
             os.remove(upload_path)
