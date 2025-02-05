@@ -1,9 +1,11 @@
 import argparse
+import gc
 import os
 from datetime import datetime
 from pathlib import Path
 
 import gradio as gr
+import torch
 import uvicorn
 from fastapi import FastAPI, File, UploadFile, Form, Query
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -60,6 +62,7 @@ def process_video(
             config=config,
             args=args,
         )
+        clear_cuda_cache()
         print("Processing completed successfully.")
         return output_path  # Ensure the output path is returned
     except Exception as e:
@@ -97,6 +100,28 @@ def create_args(
             str(seed),
         ]
     )
+
+
+# 定义一个函数进行显存清理
+def clear_cuda_cache():
+    """
+    清理PyTorch的显存和系统内存缓存。
+    注意上下文，如果在异步执行，会导致清理不了
+    """
+    logging.info("Clearing GPU memory...")
+    # 强制进行垃圾回收
+    gc.collect()
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+        # 重置统计信息
+        torch.cuda.reset_peak_memory_stats()
+        # 打印显存日志
+        logging.info(f"[GPU Memory] Allocated: {torch.cuda.memory_allocated() / (1024 ** 2):.2f} MB")
+        logging.info(f"[GPU Memory] Max Allocated: {torch.cuda.max_memory_allocated() / (1024 ** 2):.2f} MB")
+        logging.info(f"[GPU Memory] Reserved: {torch.cuda.memory_reserved() / (1024 ** 2):.2f} MB")
+        logging.info(f"[GPU Memory] Max Reserved: {torch.cuda.max_memory_reserved() / (1024 ** 2):.2f} MB")
 
 
 # 设置允许访问的域名
@@ -223,7 +248,7 @@ if __name__ == "__main__":
     argsMain = parserMain.parse_args()
     try:
         uvicorn.run(app="api:app", host="0.0.0.0", port=argsMain.port, workers=1, reload=False, log_level="info")
-    except Exception as e:
-        TextProcessor.log_error(e)
-        print(e)
+    except Exception as ex:
+        TextProcessor.log_error(ex)
+        print(ex)
         exit(0)
