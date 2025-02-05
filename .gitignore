@@ -44,11 +44,10 @@ wandb/
 /checkpoints/
 !/assets/*
 
-
-results/
-error/
-venv/
-example/
+/stabilityai/
+/results/
+/error/
+/example/
 *.whl
 
 go-api-conda.bat
