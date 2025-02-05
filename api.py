@@ -1,38 +1,118 @@
 import argparse
-import uvicorn
+import os
+from datetime import datetime
 from pathlib import Path
+
+import gradio as gr
+import uvicorn
 from fastapi import FastAPI, File, UploadFile, Form, Query
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.openapi.docs import get_swagger_ui_html
-from starlette.middleware.cors import CORSMiddleware  #引入 CORS中间件模块
-from custom.file_utils import logging, delete_old_files_and_folders
-from custom.TextProcessor import TextProcessor
+from omegaconf import OmegaConf
+from starlette.middleware.cors import CORSMiddleware  # 引入 CORS中间件模块
+
 from custom.AudioProcessor import AudioProcessor
+from custom.TextProcessor import TextProcessor
 from custom.VideoProcessor import VideoProcessor
-from custom.MfaAlignProcessor import MfaAlignProcessor
-from custom.AsrProcessor import AsrProcessor
+from custom.file_utils import logging, delete_old_files_and_folders
+from scripts.inference import main
 
-# 需要安装ImageMagick并在环境变量中配置IMAGEMAGICK_BINARY的路径，或者运行时动态指定
-# https://imagemagick.org/script/download.php
-# os.environ['IMAGEMAGICK_BINARY'] = r"C:\Program Files\ImageMagick-7.1.0-Q16-HDRI\magick.exe"
-# mfa model download dictionary mandarin_china_mfa
-# mfa model download acoustic mandarin_mfa
+result_dir = './results'
+CONFIG_PATH = Path("configs/unet/second_stage.yaml")
+CHECKPOINT_PATH = Path("checkpoints/latentsync_unet.pt")
 
-result_dir='./results'
 
-#设置允许访问的域名
-origins = ["*"]  #"*"，即为所有。
+def process_video(
+        video_path,
+        audio_path,
+        guidance_scale,
+        inference_steps,
+        seed,
+):
+    # Create the temp directory if it doesn't exist
+    output_dir = Path("./results/output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Convert paths to absolute Path objects and normalize them
+    video_file_path = Path(video_path)
+    video_path = video_file_path.absolute().as_posix()
+    audio_path = Path(audio_path).absolute().as_posix()
+
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Set the output path for the processed video
+    output_path = str(output_dir / f"{video_file_path.stem}_{current_time}.mp4")  # Change the filename as needed
+
+    config = OmegaConf.load(CONFIG_PATH)
+
+    config["run"].update(
+        {
+            "guidance_scale": guidance_scale,
+            "inference_steps": inference_steps,
+        }
+    )
+
+    # Parse the arguments
+    args = create_args(video_path, audio_path, output_path, inference_steps, guidance_scale, seed)
+
+    try:
+        result = main(
+            config=config,
+            args=args,
+        )
+        print("Processing completed successfully.")
+        return output_path  # Ensure the output path is returned
+    except Exception as e:
+        print(f"Error during processing: {str(e)}")
+        raise gr.Error(f"Error during processing: {str(e)}")
+
+
+def create_args(
+        video_path: str, audio_path: str, output_path: str, inference_steps: int, guidance_scale: float, seed: int
+) -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--inference_ckpt_path", type=str, required=True)
+    parser.add_argument("--video_path", type=str, required=True)
+    parser.add_argument("--audio_path", type=str, required=True)
+    parser.add_argument("--video_out_path", type=str, required=True)
+    parser.add_argument("--inference_steps", type=int, default=20)
+    parser.add_argument("--guidance_scale", type=float, default=1.0)
+    parser.add_argument("--seed", type=int, default=1247)
+
+    return parser.parse_args(
+        [
+            "--inference_ckpt_path",
+            CHECKPOINT_PATH.absolute().as_posix(),
+            "--video_path",
+            video_path,
+            "--audio_path",
+            audio_path,
+            "--video_out_path",
+            output_path,
+            "--inference_steps",
+            str(inference_steps),
+            "--guidance_scale",
+            str(guidance_scale),
+            "--seed",
+            str(seed),
+        ]
+    )
+
+
+# 设置允许访问的域名
+origins = ["*"]  # "*"，即为所有。
 
 app = FastAPI(docs_url=None)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  #设置允许的origins来源
+    allow_origins=origins,  # 设置允许的origins来源
     allow_credentials=True,
     allow_methods=["*"],  # 设置允许跨域的http方法，比如 get、post、put等。
-    allow_headers=["*"])  #允许跨域的headers，可以用来鉴别来源等作用。
+    allow_headers=["*"])  # 允许跨域的headers，可以用来鉴别来源等作用。
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
 # 使用本地的 Swagger UI 静态资源
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
@@ -43,6 +123,7 @@ async def custom_swagger_ui_html():
         swagger_js_url="/static/swagger-ui/5.9.0/swagger-ui-bundle.js",
         swagger_css_url="/static/swagger-ui/5.9.0/swagger-ui.css",
     )
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -59,6 +140,7 @@ async def root():
     </html>
     """
 
+
 @app.get('/test')
 async def test():
     """
@@ -66,20 +148,14 @@ async def test():
     """
     return PlainTextResponse('success')
 
-@app.post("/process_video/")
-async def process_video(
-    video: UploadFile = File(..., description="上传的视频文件"),
-    audio: UploadFile = File(..., description="上传的音频文件"),
-    prompt_text: str = Form(..., description="提供的文本提示，必填"),
-    font: str = Form(default='fonts/yahei.ttf', description="字体路径"),
-    font_size: int = Form(default=70, description="字体大小"),
-    font_color: str = Form(default='yellow', description="字体颜色"),
-    stroke_color: str = Form(default='yellow', description="描边颜色"),
-    stroke_width: int = Form(default=0, description="描边宽度"),
-    bottom: int = Form(default=10, description="字幕与视频底部的距离"),
-    opacity: int = Form(default=0, description="字幕透明度 (0-255)"),
-    srt: UploadFile = File(default=None, description="上传的字幕文件(可选，不传则自动生成)"),
-    add_audio: bool = Form(default=False, description="是否添加音频到视频"),
+
+@app.post("/do")
+async def do(
+        video: UploadFile = File(..., description="上传的视频文件"),
+        audio: UploadFile = File(..., description="上传的音频文件"),
+        guidance_scale: float = Form(default=1.0, description="指导尺度（浮点数，默认值为 1.0）"),
+        inference_steps: int = Form(default=20, description="推理步数（整数，默认值为 20）"),
+        seed: int = Form(default=1247, description="随机种子（整数，默认值为 1247）"),
 ):
     """
     处理视频和音频，生成带有字幕的视频。
@@ -91,82 +167,34 @@ async def process_video(
         # 初始化处理器
         video_processor = VideoProcessor()
         audio_processor = AudioProcessor()
-        subtitle_file = None
 
         video_upload = await video_processor.save_upload_to_video(
-                                upload_file = video
-                            )
-        
-        if srt is not None and not isinstance(srt, UploadFile):  # 检查是否上传了文件
-            subtitle_file = await video_processor.save_upload_to_srt(
-                                    upload_file = srt
-                                )
-        
-        audio_upload = await audio_processor.save_upload_to_wav(
-                                upload_file = audio, 
-                                prefix = "", 
-                                volume_multiplier = 1.0, 
-                                nonsilent = False,
-                                reduce_noise_enabled = False
-                            )
-
-        video_path, subtitle_path = video_processor.video_subtitle(
-            video_file = video_upload,
-            audio_file = audio_upload,
-            prompt_text = prompt_text,
-            add_audio = add_audio,
-            subtitle_file = subtitle_file,
-            font = font,
-            font_size = font_size,
-            font_color = font_color,
-            stroke_color = stroke_color,
-            stroke_width = stroke_width,
-            bottom = bottom,
-            opacity = opacity
+            upload_file=video
         )
-        # 返回视频响应
-        return JSONResponse({"errcode": 0, "errmsg": "ok", "video_path": video_path, "subtitle_path": subtitle_path})
-    except Exception as ex:
-        TextProcessor.log_error(ex)
-        return JSONResponse({"errcode": -1, "errmsg": str(ex)})
-    finally:
-        # 删除过期文件
-        delete_old_files_and_folders(result_dir, 1)
 
-@app.post("/process_audio/")
-async def process_audio(
-        audio: UploadFile = File(..., description="上传的音频文件"),
-        prompt_text: str = Form(..., description="提供的文本提示，必填")
-):
-    """
-    处理视频和音频，生成带有字幕的视频。
-    返回：
-        JSONResponse: 包含处理结果的 JSON 响应。
-    """
-    try:
-        # 初始化处理器
-        audio_processor = AudioProcessor()
-
-        audio_file = await audio_processor.save_upload_to_wav(
+        audio_upload = await audio_processor.save_upload_to_wav(
             upload_file=audio,
             prefix="",
             volume_multiplier=1.0,
             nonsilent=False,
             reduce_noise_enabled=False
         )
-        mfa_align_processor = MfaAlignProcessor()
-        subtitle_path = mfa_align_processor.align_audio_with_text(
-            audio_path=audio_file,
-            text=prompt_text
+
+        output_path = process_video(
+            video_path=video_upload,
+            audio_path=audio_upload,
+            guidance_scale=guidance_scale,
+            inference_steps=inference_steps,
+            seed=seed
         )
-        # MFA失败，则使用ASR
-        if not subtitle_path:
-            asr_processor = AsrProcessor()
-            subtitle_path = asr_processor.asr_to_srt(
-                audio_path=audio_file
-            )
+        bbox_range = ''
         # 返回视频响应
-        return JSONResponse({"errcode": 0, "errmsg": "ok",  "subtitle_path": subtitle_path})
+        return JSONResponse(
+            {"errcode": 0, "errmsg": "ok",
+             "video_path": output_path,
+             "name": os.path.basename(output_path),
+             "range": bbox_range
+             })
     except Exception as ex:
         TextProcessor.log_error(ex)
         return JSONResponse({"errcode": -1, "errmsg": str(ex)})
@@ -174,24 +202,26 @@ async def process_audio(
         # 删除过期文件
         delete_old_files_and_folders(result_dir, 1)
 
+
 @app.get('/download')
 async def download(
-    file_path:str = Query(..., description="输入文件路径"), 
-):    
+        file_path: str = Query(..., description="输入文件路径"),
+):
     """
     文件下载接口。
     """
     file_name = Path(file_path).name
     return FileResponse(path=file_path, filename=file_name, media_type='application/octet-stream')
 
-if __name__=='__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--port',
-                        type=int,
-                        default=8119)
-    args = parser.parse_args()
+
+if __name__ == "__main__":
+    parserMain = argparse.ArgumentParser()
+    parserMain.add_argument('--port',
+                            type=int,
+                            default=7810)
+    argsMain = parserMain.parse_args()
     try:
-        uvicorn.run(app="api:app", host="0.0.0.0", port=args.port, workers=1, reload=False, log_level="info")
+        uvicorn.run(app="api:app", host="0.0.0.0", port=argsMain.port, workers=1, reload=False, log_level="info")
     except Exception as e:
         TextProcessor.log_error(e)
         print(e)
