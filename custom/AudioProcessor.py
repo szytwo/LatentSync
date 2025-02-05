@@ -163,7 +163,7 @@ class AudioProcessor:
         else:
             wav_path = upload_path
 
-        logging.info(f"接收上传{upload_file.filename}请求 {upload_path}")
+        logging.info(f"接收上传 {upload_file.filename} 请求 {upload_path}")
 
         try:
             # 保存上传的音频文件
