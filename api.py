@@ -33,7 +33,7 @@ def process_video(
         seed,
 ):
     # Create the temp directory if it doesn't exist
-    output_dir = Path(result_dir / "output")
+    output_dir = Path(str(result_dir / "output"))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Convert paths to absolute Path objects and normalize them
