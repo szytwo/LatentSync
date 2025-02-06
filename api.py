@@ -188,8 +188,8 @@ async def test():
 async def do(
         video: UploadFile = File(..., description="上传的视频文件"),
         audio: UploadFile = File(..., description="上传的音频文件"),
-        guidance_scale: float = Form(default=1.0, description="指导尺度（浮点数，默认值为 1.0）"),
-        inference_steps: int = Form(default=20, description="推理步数（整数，默认值为 20）"),
+        scale: float = Form(default=1.0, description="指导尺度（浮点数，默认值为 1.0）"),
+        steps: int = Form(default=20, description="推理步数（整数，默认值为 20）"),
 ):
     """
     处理视频和音频，生成带有字幕的视频。
@@ -220,8 +220,8 @@ async def do(
         output_path = process_video(
             video_path=video_upload,
             audio_path=audio_upload,
-            guidance_scale=guidance_scale,
-            inference_steps=inference_steps,
+            guidance_scale=scale,
+            inference_steps=steps,
             seed=seed
         )
         bbox_range = ''
