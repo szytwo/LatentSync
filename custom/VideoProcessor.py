@@ -1,9 +1,8 @@
+import math
 import os
 import subprocess
 
-import moviepy.video.fx.all as vfx
 from fastapi import UploadFile
-from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
 
 from custom.TextProcessor import TextProcessor
 from custom.file_utils import logging, add_suffix_to_filename
@@ -91,9 +90,9 @@ class VideoProcessor:
             return video_path, original_fps
 
     @staticmethod
-    def get_video_metadata(video_path):
+    def get_media_metadata(media_path):
         cmd = [
-            "ffprobe", "-i", video_path, "-show_streams", "-select_streams", "v", "-hide_banner", "-loglevel", "error"
+            "ffprobe", "-i", media_path, "-show_streams", "-select_streams", "v", "-hide_banner", "-loglevel", "error"
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         metadata = {}
@@ -105,39 +104,72 @@ class VideoProcessor:
         return metadata
 
     @staticmethod
+    def get_duration(media_path):
+        """利用 ffprobe 获取多媒体文件时长（单位：秒）"""
+
+        metadata = VideoProcessor.get_media_metadata(media_path)
+        duration = float(metadata.get("duration", "0"))
+
+        return duration
+
+    @staticmethod
     def process_video_with_audio(video_path: str, audio_path: str):
         output_path = add_suffix_to_filename(video_path, "_with")
-        # 加载视频和音频
-        video_clip = VideoFileClip(video_path)
-        audio_clip = AudioFileClip(audio_path)
+        # 获取视频和音频时长
+        video_duration = VideoProcessor.get_duration(video_path)
+        audio_duration = VideoProcessor.get_duration(audio_path)
 
-        target_duration = audio_clip.duration
-        video_duration = video_clip.duration
+        print(f"视频时长: {video_duration} 秒")
+        print(f"音频时长: {audio_duration} 秒")
 
-        logging.info(f"音频时长: {target_duration}s, 视频时长: {video_duration}s")
-
-        if video_duration < target_duration:
-            # 当视频时长小于音频时，构造一个交替正序、倒序的视频序列
-            clips = []
-            current_duration = 0
-            forward = True  # 标记当前是否正序播放
-            while current_duration < target_duration:
-                # 如果需要倒序，则应用 time_mirror 效果
-                clip = video_clip if forward else video_clip.fx(vfx.time_mirror)
-                clips.append(clip)
-                current_duration += video_duration
-                forward = not forward
-            # 拼接所有片段，并截取到目标时长
-            final_clip = concatenate_videoclips(clips).subclip(0, target_duration)
-        elif video_duration > target_duration:
-            # 当视频时长大于音频时，直接截取视频前 target_duration 秒
-            final_clip = video_clip.subclip(0, target_duration)
+        if video_duration >= audio_duration:
+            # 情况1：视频时长大于或等于音频，直接截取视频
+            cmd_trim = [
+                "ffmpeg", "-y",
+                "-i", video_path,
+                "-i", audio_path,
+                "-c:v", "libx264", "-c:a", "aac",
+                "-t", str(audio_duration),
+                output_path
+            ]
+            subprocess.run(cmd_trim, capture_output=True, text=True, check=True)
         else:
-            # 时长一致时，直接使用原视频
-            final_clip = video_clip
-        # 将音频设置到视频上
-        final_clip = final_clip.set_audio(audio_clip)
-        # 输出处理后的视频
-        final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+            # 情况2：视频时长小于音频
+            # 生成视频倒序版本（忽略音频）
+            reversed_video = add_suffix_to_filename(video_path, "_reversed")
+            cmd_reverse = [
+                "ffmpeg", "-y",
+                "-i", video_path,
+                "-vf", "reverse",
+                "-an",  # 不处理音频
+                reversed_video
+            ]
+            subprocess.run(cmd_reverse, capture_output=True, text=True, check=True)
+
+            # 每个正序+倒序周期时长为 2 * video_duration
+            cycle_duration = video_duration * 2
+            cycles = math.ceil(audio_duration / cycle_duration)
+            print(f"需要循环 {cycles} 个周期")
+
+            # 使用 concat 过滤器拼接视频序列
+            concat_filter = "".join(
+                f"[{i}:v:0][{i}:a:0]" for i in range(cycles * 2)
+            ) + f"concat=n={cycles * 2}:v=1:a=0[outv]"
+
+            inputs = []
+            for _ in range(cycles):
+                inputs.extend(["-i", video_path, "-i", reversed_video])
+
+            cmd_concat = [
+                "ffmpeg", "-y",
+                *inputs,
+                "-filter_complex", concat_filter,
+                "-map", "[outv]",
+                "-i", audio_path,
+                "-c:v", "libx264", "-c:a", "aac",
+                "-t", str(audio_duration),
+                output_path
+            ]
+            subprocess.run(cmd_concat, capture_output=True, text=True, check=True)
 
         return output_path
