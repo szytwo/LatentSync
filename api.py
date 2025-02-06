@@ -8,7 +8,7 @@ from pathlib import Path
 import gradio as gr
 import torch
 import uvicorn
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Query
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -189,8 +189,8 @@ async def test():
 async def do(
         video: UploadFile = File(..., description="上传的视频文件"),
         audio: UploadFile = File(..., description="上传的音频文件"),
-        scale: float = Form(default=1.0, description="指导尺度（浮点数，默认值为 1.0）"),
-        steps: int = Form(default=20, description="推理步数（整数，默认值为 20）"),
+        scale: float = Query(default=1.0, description="指导尺度（浮点数，默认值为 1.0）"),
+        steps: int = Query(default=20, description="推理步数（整数，默认值为 20）"),
 ):
     """
     处理视频和音频，生成带有字幕的视频。
