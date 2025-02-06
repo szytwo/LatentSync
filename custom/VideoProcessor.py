@@ -3,6 +3,7 @@ import subprocess
 
 import moviepy.video.fx.all as vfx
 from fastapi import UploadFile
+from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
 
 from custom.TextProcessor import TextProcessor
 from custom.file_utils import logging, add_suffix_to_filename
