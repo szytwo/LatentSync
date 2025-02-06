@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+import moviepy.video.fx.all as vfx
 from fastapi import UploadFile
 
 from custom.TextProcessor import TextProcessor
@@ -101,3 +102,41 @@ class VideoProcessor:
                 metadata[key.strip()] = value.strip()
         logging.info(metadata)
         return metadata
+
+    @staticmethod
+    def process_video_with_audio(video_path: str, audio_path: str):
+        output_path = add_suffix_to_filename(video_path, "_with")
+        # 加载视频和音频
+        video_clip = VideoFileClip(video_path)
+        audio_clip = AudioFileClip(audio_path)
+
+        target_duration = audio_clip.duration
+        video_duration = video_clip.duration
+
+        logging.info(f"音频时长: {target_duration}s, 视频时长: {video_duration}s")
+
+        if video_duration < target_duration:
+            # 当视频时长小于音频时，构造一个交替正序、倒序的视频序列
+            clips = []
+            current_duration = 0
+            forward = True  # 标记当前是否正序播放
+            while current_duration < target_duration:
+                # 如果需要倒序，则应用 time_mirror 效果
+                clip = video_clip if forward else video_clip.fx(vfx.time_mirror)
+                clips.append(clip)
+                current_duration += video_duration
+                forward = not forward
+            # 拼接所有片段，并截取到目标时长
+            final_clip = concatenate_videoclips(clips).subclip(0, target_duration)
+        elif video_duration > target_duration:
+            # 当视频时长大于音频时，直接截取视频前 target_duration 秒
+            final_clip = video_clip.subclip(0, target_duration)
+        else:
+            # 时长一致时，直接使用原视频
+            final_clip = video_clip
+        # 将音频设置到视频上
+        final_clip = final_clip.set_audio(audio_clip)
+        # 输出处理后的视频
+        final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+
+        return output_path

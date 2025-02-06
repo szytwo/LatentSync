@@ -215,6 +215,8 @@ async def do(
             reduce_noise_enabled=False
         )
 
+        video_upload = video_processor.process_video_with_audio(video_upload, audio_upload)
+        
         seed_data = generate_seed()
         seed = seed_data["value"]
 
