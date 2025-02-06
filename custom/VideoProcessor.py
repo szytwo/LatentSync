@@ -1,3 +1,4 @@
+import json
 import math
 import os
 import subprocess
@@ -46,11 +47,10 @@ class VideoProcessor:
             await upload_file.close()  # 显式关闭上传文件
 
     @staticmethod
-    def convert_video_to_25fps(video_path, video_metadata):
+    def convert_video_to_25fps(video_path):
         """ 使用 MoviePy 将视频转换为 25 FPS """
         # 检查视频帧率
-        r_frame_rate = video_metadata.get("r_frame_rate", "25/1")
-        original_fps = eval(r_frame_rate.strip())  # 将字符串帧率转换为浮点数
+        original_fps = VideoProcessor.get_video_frame_rate(video_path)
         target_fps = 25
 
         if original_fps != target_fps:
@@ -92,38 +92,61 @@ class VideoProcessor:
     @staticmethod
     def get_media_metadata(media_path):
         cmd = [
-            "ffprobe", "-i", media_path, "-show_streams", "-select_streams", "v", "-hide_banner", "-loglevel", "error"
+            "ffprobe",
+            "-i", media_path,
+            "-show_streams",
+            "-show_format",
+            "-print_format", "json",
+            "-hide_banner",
+            "-loglevel", "error"
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
-        metadata = {}
-        for line in result.stdout.splitlines():
-            if "=" in line:
-                key, value = line.split("=", 1)
-                metadata[key.strip()] = value.strip()
-        logging.info(metadata)
+        metadata = json.loads(result.stdout)
+
         return metadata
 
     @staticmethod
     def get_duration(media_path):
         """利用 ffprobe 获取多媒体文件时长（单位：秒）"""
-
         metadata = VideoProcessor.get_media_metadata(media_path)
-        duration = float(metadata.get("duration", "0"))
+        # 从 format 元数据中提取时长
+        duration = float(metadata.get("format", {}).get("duration", 0.0))
 
         return duration
 
     @staticmethod
+    def get_video_frame_rate(media_path):
+        """获取视频文件的帧率"""
+        metadata = VideoProcessor.get_media_metadata(media_path)
+        # 查找第一个视频流
+        video_stream = next((stream for stream in metadata.get("streams", []) if stream.get("codec_type") == "video"),
+                            None)
+        if not video_stream:
+            raise ValueError("未找到视频流")
+        # 获取 r_frame_rate
+        r_frame_rate = video_stream.get("r_frame_rate", "0/1")
+        # 计算帧率
+        num, denom = map(int, r_frame_rate.split('/'))
+        frame_rate = num / denom if denom != 0 else 0
+
+        return frame_rate
+
+    @staticmethod
     def process_video_with_audio(video_path: str, audio_path: str):
-        output_path = add_suffix_to_filename(video_path, "_with")
         # 获取视频和音频时长
         video_duration = VideoProcessor.get_duration(video_path)
         audio_duration = VideoProcessor.get_duration(audio_path)
 
-        print(f"视频时长: {video_duration} 秒")
-        print(f"音频时长: {audio_duration} 秒")
+        logging.info(f"视频时长: {video_duration} 秒，音频时长: {audio_duration} 秒")
 
-        if video_duration >= audio_duration:
-            # 情况1：视频时长大于或等于音频，直接截取视频
+        if video_duration == audio_duration:
+            return video_path
+
+        output_path = add_suffix_to_filename(video_path, "_with")
+        
+        if video_duration > audio_duration:
+            logging.info(f"视频时长大于或等于音频，直接截取视频")
+
             cmd_trim = [
                 "ffmpeg", "-y",
                 "-i", video_path,
@@ -134,38 +157,51 @@ class VideoProcessor:
             ]
             subprocess.run(cmd_trim, capture_output=True, text=True, check=True)
         else:
-            # 情况2：视频时长小于音频
+            logging.info(f"视频时长小于音频，正倒序重复拼接")
+            # 要剪掉的时长，单位：毫秒
+            offset_ms = 100
+            # 转换为秒（浮点数）
+            offset_seconds = offset_ms / 1000.0
+            # 对于 ffmpeg -ss 参数，可以直接使用字符串形式的秒数
+            offset = str(offset_seconds)  # 例如 "0.5"
             # 生成视频倒序版本（忽略音频）
             reversed_video = add_suffix_to_filename(video_path, "_reversed")
             cmd_reverse = [
                 "ffmpeg", "-y",
+                "-ss", offset,  # 先去掉前面的 offset_seconds
                 "-i", video_path,
                 "-vf", "reverse",
                 "-an",  # 不处理音频
                 reversed_video
             ]
             subprocess.run(cmd_reverse, capture_output=True, text=True, check=True)
-
-            # 每个正序+倒序周期时长为 2 * video_duration
-            cycle_duration = video_duration * 2
+            # 计算每个视频输入的有效时长（去掉前面的 offset）
+            effective_video_duration = video_duration - offset_seconds
+            # 每个正序+倒序周期的时长为两个有效视频时长之和
+            cycle_duration = effective_video_duration * 2
+            # 根据音频时长和每个周期的时长计算需要的循环次数
             cycles = math.ceil(audio_duration / cycle_duration)
-            print(f"需要循环 {cycles} 个周期")
-
-            # 使用 concat 过滤器拼接视频序列
+            # 构造 concat 过滤器，只拼接视频流（注意，这里每个输入视频已经经过 -ss 剪切）
             concat_filter = "".join(
-                f"[{i}:v:0][{i}:a:0]" for i in range(cycles * 2)
-            ) + f"concat=n={cycles * 2}:v=1:a=0[outv]"
-
+                f"[{i}:v:0]" for i in range(cycles * 2)
+            ) + f"concat=n={cycles * 2}:v=1[outv]"
+            # 构造交替顺序的输入列表，并在每个视频输入前加上 -ss 参数
             inputs = []
-            for _ in range(cycles):
-                inputs.extend(["-i", video_path, "-i", reversed_video])
-
+            for i in range(cycles * 2):
+                if i % 2 == 0:
+                    # 正序视频
+                    inputs.extend(["-ss", offset, "-i", video_path])
+                else:
+                    # 倒序视频（已经在生成时去掉了前面部分，不需要再加 -ss）
+                    inputs.extend(["-i", reversed_video])
+            # 拼接命令：注意这里音频输入位于所有视频输入之后，其索引为 cycles * 2
             cmd_concat = [
                 "ffmpeg", "-y",
                 *inputs,
-                "-filter_complex", concat_filter,
-                "-map", "[outv]",
                 "-i", audio_path,
+                "-filter_complex", concat_filter,
+                "-map", "[outv]",  # 映射拼接后的视频流
+                "-map", f"{cycles * 2}:a:0",  # 映射音频文件中的音频流
                 "-c:v", "libx264", "-c:a", "aac",
                 "-t", str(audio_duration),
                 output_path
