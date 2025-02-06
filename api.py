@@ -8,7 +8,7 @@ from pathlib import Path
 import gradio as gr
 import torch
 import uvicorn
-from fastapi import FastAPI, File, UploadFile, Form, Query
+from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,6 +22,7 @@ from custom.file_utils import logging, delete_old_files_and_folders
 from scripts.inference import main
 
 result_dir = './results'
+result_output_dir = f'{result_dir}/output'
 CONFIG_PATH = Path("configs/unet/second_stage.yaml")
 CHECKPOINT_PATH = Path("checkpoints/latentsync_unet.pt")
 
@@ -242,14 +243,9 @@ async def do(
 
 
 @app.get('/download')
-async def download(
-        file_path: str = Query(..., description="输入文件路径"),
-):
-    """
-    文件下载接口。
-    """
-    file_name = Path(file_path).name
-    return FileResponse(path=file_path, filename=file_name, media_type='application/octet-stream')
+async def download(name: str):
+    return FileResponse(path=os.path.join(result_output_dir, name), filename=name,
+                        media_type='application/octet-stream')
 
 
 if __name__ == "__main__":
