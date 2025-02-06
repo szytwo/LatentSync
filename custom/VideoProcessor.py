@@ -143,7 +143,7 @@ class VideoProcessor:
             return video_path
 
         output_path = add_suffix_to_filename(video_path, "_with")
-        
+
         if video_duration > audio_duration:
             logging.info(f"视频时长大于或等于音频，直接截取视频")
 
@@ -151,13 +151,19 @@ class VideoProcessor:
                 "ffmpeg", "-y",
                 "-i", video_path,
                 "-i", audio_path,
-                "-c:v", "libx264", "-c:a", "aac",
+                "-c:v", "libx264",
+                "-crf", "18",  # 设置压缩质量
+                "-preset", "slow",  # 设置编码速度/质量平衡
+                "-c:a", "aac",
+                "-b:a", "192k",  # 设置音频比特率
+                "-ar", "44100",
+                "-ac", "2",
                 "-t", str(audio_duration),
                 output_path
             ]
             subprocess.run(cmd_trim, capture_output=True, text=True, check=True)
         else:
-            logging.info(f"视频时长小于音频，正倒序重复拼接")
+            logging.info(f"视频时长小于音频，正倒序重复拼接......")
             # 要剪掉的时长，单位：毫秒
             offset_ms = 100
             # 转换为秒（浮点数）
@@ -172,6 +178,8 @@ class VideoProcessor:
                 "-i", video_path,
                 "-vf", "reverse",
                 "-an",  # 不处理音频
+                "-crf", "18",  # 设置压缩质量
+                "-preset", "slow",  # 设置编码速度/质量平衡
                 reversed_video
             ]
             subprocess.run(cmd_reverse, capture_output=True, text=True, check=True)
@@ -181,6 +189,7 @@ class VideoProcessor:
             cycle_duration = effective_video_duration * 2
             # 根据音频时长和每个周期的时长计算需要的循环次数
             cycles = math.ceil(audio_duration / cycle_duration)
+            logging.info(f"需要循环 {cycles} 个周期")
             # 构造 concat 过滤器，只拼接视频流（注意，这里每个输入视频已经经过 -ss 剪切）
             concat_filter = "".join(
                 f"[{i}:v:0]" for i in range(cycles * 2)
@@ -202,7 +211,13 @@ class VideoProcessor:
                 "-filter_complex", concat_filter,
                 "-map", "[outv]",  # 映射拼接后的视频流
                 "-map", f"{cycles * 2}:a:0",  # 映射音频文件中的音频流
-                "-c:v", "libx264", "-c:a", "aac",
+                "-c:v", "libx264",
+                "-crf", "18",  # 设置压缩质量
+                "-preset", "slow",  # 设置编码速度/质量平衡
+                "-c:a", "aac",
+                "-b:a", "192k",  # 设置音频比特率
+                "-ar", "44100",
+                "-ac", "2",
                 "-t", str(audio_duration),
                 output_path
             ]
