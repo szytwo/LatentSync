@@ -5,7 +5,6 @@ import random
 from datetime import datetime
 from pathlib import Path
 
-import gradio as gr
 import torch
 import uvicorn
 from fastapi import FastAPI, File, UploadFile, Query
@@ -22,6 +21,7 @@ from custom.file_utils import logging, delete_old_files_and_folders
 from scripts.inference import main
 
 result_dir = './results'
+result_input_dir = f'{result_dir}/input'
 result_output_dir = f'{result_dir}/output'
 CONFIG_PATH = Path("configs/unet/second_stage.yaml")
 CHECKPOINT_PATH = Path("checkpoints/latentsync_unet.pt")
@@ -36,7 +36,7 @@ def process_video(
         fps
 ):
     # Create the temp directory if it doesn't exist
-    output_dir = Path(f"{result_dir}/output")
+    output_dir = Path(result_output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Convert paths to absolute Path objects and normalize them
@@ -70,11 +70,12 @@ def process_video(
             args=args,
         )
         clear_cuda_cache()
-        print("Processing completed successfully.")
+        logging.info("Processing completed successfully.")
         return output_path  # Ensure the output path is returned
     except Exception as e:
-        print(f"Error during processing: {str(e)}")
-        raise gr.Error(f"Error during processing: {str(e)}")
+        errmsg = f"Error during processing: {str(e)}"
+        logging.error(errmsg)
+        raise RuntimeError(errmsg)
 
 
 def create_args(
@@ -265,6 +266,10 @@ if __name__ == "__main__":
                             default=7810)
     argsMain = parserMain.parse_args()
     try:
+        # 删除过期文件
+        delete_old_files_and_folders(result_input_dir, 0)
+        delete_old_files_and_folders(result_output_dir, 0)
+
         uvicorn.run(app="api:app", host="0.0.0.0", port=argsMain.port, workers=1, reload=False, log_level="info")
     except Exception as ex:
         TextProcessor.log_error(ex)
