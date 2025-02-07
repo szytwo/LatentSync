@@ -455,7 +455,7 @@ class LipsyncPipeline(DiffusionPipeline):
         os.makedirs(temp_dir, exist_ok=True)
 
         video_file_name = Path(video_path).stem
-        temp_img_dir = f"./results/temp/{video_file_name}"
+        temp_img_dir = f"{temp_dir}/{video_file_name}"
         os.makedirs(temp_img_dir, exist_ok=True)
 
         video_frames_length = self.restore_video(
