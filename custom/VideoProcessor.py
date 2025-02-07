@@ -47,14 +47,13 @@ class VideoProcessor:
             await upload_file.close()  # 显式关闭上传文件
 
     @staticmethod
-    def convert_video_to_25fps(video_path):
-        """ 使用 MoviePy 将视频转换为 25 FPS """
+    def convert_video_fps(video_path: str, target_fps: int = 25):
+        """ 将视频转换为 指定 FPS """
         # 检查视频帧率
         original_fps = VideoProcessor.get_video_frame_rate(video_path)
-        target_fps = 25
 
         if original_fps != target_fps:
-            logging.info(f"视频帧率为 {original_fps}，转换为 25 FPS")
+            logging.info(f"视频帧率为 {original_fps} FPS，转换为 {target_fps} FPS")
             converted_video_path = add_suffix_to_filename(video_path, f"_{target_fps}")
 
             # 使用 FFmpeg 转换帧率
@@ -86,7 +85,7 @@ class VideoProcessor:
                 TextProcessor.log_error(ex)
                 return None, None
         else:
-            logging.info("视频帧率已经是 25 FPS，无需转换")
+            logging.info(f"视频帧率已经是 {target_fps} FPS，无需转换")
             return video_path, original_fps
 
     @staticmethod

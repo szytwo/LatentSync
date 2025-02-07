@@ -191,6 +191,7 @@ async def do(
         audio: UploadFile = File(..., description="上传的音频文件"),
         scale: float = Query(default=1.0, description="指导尺度（浮点数，默认值为 1.0）"),
         steps: int = Query(default=20, description="推理步数（整数，默认值为 20）"),
+        fps: int = Query(default=25, description="视频帧率（整数，默认值为 25）"),
 ):
     """
     处理视频和音频，生成带有字幕的视频。
@@ -214,9 +215,10 @@ async def do(
             nonsilent=False,
             reduce_noise_enabled=False
         )
-
-        video_upload = video_processor.process_video_with_audio(video_upload, audio_upload)
         
+        video_upload = video_processor.convert_video_fps(video_upload, fps)
+        video_upload = video_processor.process_video_with_audio(video_upload, audio_upload)
+
         seed_data = generate_seed()
         seed = seed_data["value"]
 
