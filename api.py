@@ -265,7 +265,14 @@ if __name__ == "__main__":
     parserMain.add_argument('--port',
                             type=int,
                             default=7810)
+    # 设置显存比例限制（浮点类型，默认值为 0）
+    parserMain.add_argument("--cuda_memory", type=float, default=0)
     argsMain = parserMain.parse_args()
+    # 设置显存比例限制
+    if argsMain.cuda_memory > 0:
+        logging.info(f"cuda_memory: {argsMain.cuda_memory}")
+        torch.cuda.set_per_process_memory_fraction(argsMain.cuda_memory)
+
     try:
         # 删除过期文件
         delete_old_files_and_folders(result_input_dir, 0)
