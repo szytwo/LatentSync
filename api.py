@@ -1,6 +1,5 @@
 import argparse
 import gc
-import os
 import random
 from datetime import datetime
 from pathlib import Path
@@ -77,7 +76,7 @@ def process_video(
         raise RuntimeError(errmsg)
     finally:
         clear_cuda_cache()
-        
+
     return output_path  # Ensure the output path is returned
 
 
@@ -244,8 +243,7 @@ async def do(
         return JSONResponse({
             "errcode": 0,
             "errmsg": "ok",
-            "video_path": output_path,
-            "name": os.path.basename(output_path),
+            "name": output_path,
             "range": bbox_range
         })
     except Exception as e:
@@ -257,9 +255,11 @@ async def do(
 
 
 @app.get('/download')
-async def download(name: str):
-    return FileResponse(path=os.path.join(result_output_dir, name), filename=name,
-                        media_type='application/octet-stream')
+async def download(
+        name: str = Query(..., description="输入文件路径"),
+):
+    file_name = Path(name).name
+    return FileResponse(path=name, filename=file_name, media_type='application/octet-stream')
 
 
 if __name__ == "__main__":
@@ -277,9 +277,7 @@ if __name__ == "__main__":
 
     try:
         # 删除临时文件
-        delete_old_files_and_folders(result_temp_dir, 0)
-        delete_old_files_and_folders(result_input_dir, 0)
-        delete_old_files_and_folders(result_output_dir, 0)
+        delete_old_files_and_folders(result_dir, 0)
 
         uvicorn.run(app="api:app", host="0.0.0.0", port=argsMain.port, workers=1, reload=False, log_level="info")
     except Exception as ex:
