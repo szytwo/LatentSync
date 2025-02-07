@@ -21,6 +21,7 @@ from custom.file_utils import logging, delete_old_files_and_folders
 from scripts.inference import main
 
 result_dir = './results'
+result_temp_dir = f'{result_dir}/temp'
 result_input_dir = f'{result_dir}/input'
 result_output_dir = f'{result_dir}/output'
 CONFIG_PATH = Path("configs/unet/second_stage.yaml")
@@ -274,7 +275,8 @@ if __name__ == "__main__":
         torch.cuda.set_per_process_memory_fraction(argsMain.cuda_memory)
 
     try:
-        # 删除过期文件
+        # 删除临时文件
+        delete_old_files_and_folders(result_temp_dir, 0)
         delete_old_files_and_folders(result_input_dir, 0)
         delete_old_files_and_folders(result_output_dir, 0)
 
