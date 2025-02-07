@@ -215,8 +215,8 @@ async def do(
             nonsilent=False,
             reduce_noise_enabled=False
         )
-        
-        video_upload = video_processor.convert_video_fps(video_upload, fps)
+
+        video_upload, fps = video_processor.convert_video_fps(video_upload, fps)
         video_upload = video_processor.process_video_with_audio(video_upload, audio_upload)
 
         seed_data = generate_seed()
