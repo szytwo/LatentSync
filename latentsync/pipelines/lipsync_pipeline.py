@@ -3,10 +3,9 @@
 import inspect
 import os
 import shutil
-import subprocess
+from pathlib import Path
 from typing import Callable, List, Optional, Union
 
-import numpy as np
 import soundfile as sf
 import torch
 import torchvision
@@ -29,7 +28,8 @@ from packaging import version
 
 from ..models.unet import UNet3DConditionModel
 from ..utils.image_processor import ImageProcessor
-from ..utils.util import read_video, read_audio, write_video, check_ffmpeg_installed
+from ..utils.util import read_video, read_audio, check_ffmpeg_installed, save_frame, write_video_ffmpeg, \
+    get_video_metadata
 from ..whisper.audio2feature import Audio2Feature
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
@@ -271,9 +271,8 @@ class LipsyncPipeline(DiffusionPipeline):
         faces = torch.stack(faces)
         return faces, video_frames, boxes, affine_matrices
 
-    def restore_video(self, faces, video_frames, boxes, affine_matrices):
+    def restore_video(self, temp_dir, faces, video_frames, boxes, affine_matrices):
         video_frames = video_frames[: faces.shape[0]]
-        out_frames = []
         print(f"Restoring {len(faces)} faces...")
         for index, face in enumerate(tqdm.tqdm(faces)):
             x1, y1, x2, y2 = boxes[index]
@@ -281,7 +280,7 @@ class LipsyncPipeline(DiffusionPipeline):
             width = int(x2 - x1)
             # 当检测不到人脸时，返回原帧
             if height <= 0 or width <= 0:
-                out_frames.append(video_frames[index])
+                save_frame(index, video_frames[index], temp_dir)
                 continue
 
             face = torchvision.transforms.functional.resize(face, size=(height, width), antialias=True)
@@ -290,8 +289,9 @@ class LipsyncPipeline(DiffusionPipeline):
             face = (face * 255).to(torch.uint8).cpu().numpy()
             # face = cv2.resize(face, (width, height), interpolation=cv2.INTER_LANCZOS4)
             out_frame = self.image_processor.restorer.restore_img(video_frames[index], face, affine_matrices[index])
-            out_frames.append(out_frame)
-        return np.stack(out_frames, axis=0)
+            save_frame(index, out_frame, temp_dir)
+
+        return faces.shape[0]
 
     @torch.no_grad()
     def __call__(
@@ -449,28 +449,32 @@ class LipsyncPipeline(DiffusionPipeline):
             synced_video_frames.append(decoded_latents)
             # masked_video_frames.append(masked_pixel_values)
 
-        synced_video_frames = self.restore_video(
-            torch.cat(synced_video_frames), original_video_frames, boxes, affine_matrices
-        )
-        # masked_video_frames = self.restore_video(
-        #     torch.cat(masked_video_frames), original_video_frames, boxes, affine_matrices
-        # )
+        temp_dir = "./results/temp"
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+        os.makedirs(temp_dir, exist_ok=True)
 
-        audio_samples_remain_length = int(synced_video_frames.shape[0] / video_fps * audio_sample_rate)
+        video_file_name = Path(video_path).stem
+        temp_img_dir = f"./results/temp/{video_file_name}"
+        os.makedirs(temp_img_dir, exist_ok=True)
+
+        video_frames_length = self.restore_video(
+            temp_img_dir,
+            torch.cat(synced_video_frames),
+            original_video_frames,
+            boxes,
+            affine_matrices
+        )
+
+        audio_samples_remain_length = int(video_frames_length / video_fps * audio_sample_rate)
         audio_samples = audio_samples[:audio_samples_remain_length].cpu().numpy()
 
         if is_train:
             self.unet.train()
 
-        temp_dir = "temp"
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
-        os.makedirs(temp_dir, exist_ok=True)
+        audio_output_path = os.path.join(temp_dir, "audio.wav")
+        sf.write(audio_output_path, audio_samples, audio_sample_rate)
 
-        write_video(os.path.join(temp_dir, "video.mp4"), synced_video_frames, fps=video_fps)
-        # write_video(video_mask_path, masked_video_frames, fps=25)
-
-        sf.write(os.path.join(temp_dir, "audio.wav"), audio_samples, audio_sample_rate)
-
-        command = f"ffmpeg -y -loglevel error -nostdin -i {os.path.join(temp_dir, 'video.mp4')} -i {os.path.join(temp_dir, 'audio.wav')} -c:v libx264 -c:a aac -q:v 0 -q:a 0 {video_out_path}"
-        subprocess.run(command, shell=True)
+        video_metadata = get_video_metadata(video_path)
+        video_output_path = os.path.join(temp_dir, "video.mp4")
+        write_video_ffmpeg(temp_img_dir, video_output_path, video_fps, audio_output_path, video_metadata)

@@ -12,27 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import imageio
-import numpy as np
 import json
-from typing import Union
-import matplotlib.pyplot as plt
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torchvision
-import torch.distributed as dist
-from torchvision import transforms
-
-from tqdm import tqdm
-from einops import rearrange
-import cv2
-from decord import AudioReader, VideoReader
+import os
 import shutil
 import subprocess
+from typing import Union
 
+import cv2
+import imageio
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+import torch.distributed as dist
+import torch.nn as nn
+import torchvision
+from decord import AudioReader, VideoReader
+from einops import rearrange
+from torchvision import transforms
+from tqdm import tqdm
 
 # Machine epsilon for a float32 (single precision)
 eps = np.finfo(np.float32).eps
@@ -113,6 +110,16 @@ def read_audio(audio_path: str, audio_sample_rate: int = 16000):
     return audio_samples
 
 
+def save_frame(i, combine_frame, img_output_path):
+    # 保存图片
+    output_path = f"{img_output_path}/{str(i).zfill(8)}.png"
+
+    combine_frame = cv2.cvtColor(combine_frame, cv2.COLOR_RGB2BGR)
+    cv2.imwrite(output_path, combine_frame)
+
+    return output_path
+
+
 def write_video(video_output_path: str, video_frames: np.ndarray, fps: int):
     height, width = video_frames[0].shape[:2]
     out = cv2.VideoWriter(video_output_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
@@ -121,6 +128,57 @@ def write_video(video_output_path: str, video_frames: np.ndarray, fps: int):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         out.write(frame)
     out.release()
+
+
+def write_video_ffmpeg(img_save_path, output_video, fps, audio_path, video_metadata):
+    # 提取关键颜色信息
+    pix_fmt = video_metadata.get("pix_fmt", "yuv420p")
+    color_range = video_metadata.get("color_range", "1")
+    color_space = video_metadata.get("color_space", "1")
+    color_transfer = video_metadata.get("color_transfer", "1")
+    color_primaries = video_metadata.get("color_primaries", "1")
+
+    # 将图像序列转换为视频
+    img_sequence_str = os.path.join(img_save_path, "%08d.png")  # 8位数字格式
+    # 创建 FFmpeg 命令来合成视频
+    cmd = [
+        "ffmpeg",
+        "-framerate", str(fps),  # 设置帧率
+        "-i", img_sequence_str,  # 图像序列
+        "-i", audio_path,  # 音频文件
+        "-c:v", "libx264",  # 使用 x264 编码
+        "-pix_fmt", pix_fmt,  # 设置像素格式
+        "-color_range", color_range,  # 设置色彩范围
+        "-colorspace", color_space,  # 设置色彩空间
+        "-color_trc", color_transfer,  # 设置色彩传递特性
+        "-color_primaries", color_primaries,  # 设置色彩基准
+        "-c:a", "aac",  # 使用 AAC 编码音频
+        "-b:a", "192k",  # 设置音频比特率
+        "-ar", "44100",
+        "-ac", "2",
+        "-preset", "slow",  # 设置编码器预设
+        "-crf", "18",  # 设置 CRF 值来控制视频质量
+        "-y",
+        output_video  # 输出文件路径
+    ]
+
+    # 执行 FFmpeg 命令
+    subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+    return output_video
+
+
+def get_video_metadata(video_path):
+    cmd = [
+        "ffprobe", "-i", video_path, "-show_streams", "-select_streams", "v", "-hide_banner", "-loglevel", "error"
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    metadata = {}
+    for line in result.stdout.splitlines():
+        if "=" in line:
+            key, value = line.split("=", 1)
+            metadata[key.strip()] = value.strip()
+    return metadata
 
 
 def init_dist(backend="nccl", **kwargs):
@@ -150,7 +208,7 @@ def make_audio_window(audio_embeddings: torch.Tensor, window_size: int):
     audio_window = []
     end_idx = audio_embeddings.shape[1] - window_size + 1
     for i in range(end_idx):
-        audio_window.append(audio_embeddings[:, i : i + window_size, :])
+        audio_window.append(audio_embeddings[:, i: i + window_size, :])
     audio_window = torch.stack(audio_window)
     audio_window = rearrange(audio_window, "f b w d -> b f w d")
     return audio_window
@@ -240,10 +298,10 @@ def reversed_forward(ddim_scheduler, pred_noise, timesteps, x_t):
 
 
 def next_step(
-    model_output: Union[torch.FloatTensor, np.ndarray],
-    timestep: int,
-    sample: Union[torch.FloatTensor, np.ndarray],
-    ddim_scheduler,
+        model_output: Union[torch.FloatTensor, np.ndarray],
+        timestep: int,
+        sample: Union[torch.FloatTensor, np.ndarray],
+        ddim_scheduler,
 ):
     timestep, next_timestep = (
         min(timestep - ddim_scheduler.config.num_train_timesteps // ddim_scheduler.num_inference_steps, 999),
@@ -252,9 +310,9 @@ def next_step(
     alpha_prod_t = ddim_scheduler.alphas_cumprod[timestep] if timestep >= 0 else ddim_scheduler.final_alpha_cumprod
     alpha_prod_t_next = ddim_scheduler.alphas_cumprod[next_timestep]
     beta_prod_t = 1 - alpha_prod_t
-    next_original_sample = (sample - beta_prod_t**0.5 * model_output) / alpha_prod_t**0.5
+    next_original_sample = (sample - beta_prod_t ** 0.5 * model_output) / alpha_prod_t ** 0.5
     next_sample_direction = (1 - alpha_prod_t_next) ** 0.5 * model_output
-    next_sample = alpha_prod_t_next**0.5 * next_original_sample + next_sample_direction
+    next_sample = alpha_prod_t_next ** 0.5 * next_original_sample + next_sample_direction
     return next_sample
 
 
