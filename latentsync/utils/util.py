@@ -131,6 +131,7 @@ def write_video(video_output_path: str, video_frames: np.ndarray, fps: int):
 
 
 def write_video_ffmpeg(img_save_path, output_video, fps, audio_path, video_metadata):
+    print(f"Writing image into video...")
     # 提取关键颜色信息
     pix_fmt = video_metadata.get("pix_fmt", "yuv420p")
     color_range = video_metadata.get("color_range", "1")
