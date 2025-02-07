@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from torchvision import transforms
-import cv2
-from einops import rearrange
-import mediapipe as mp
-import torch
-import numpy as np
 from typing import Union
-from .affine_transform import AlignRestore, laplacianSmooth
+
+import cv2
 import face_alignment
+import mediapipe as mp
+import numpy as np
+import torch
+from einops import rearrange
+from torchvision import transforms
+
+from .affine_transform import AlignRestore, laplacianSmooth
 
 """
 If you are enlarging the image, you should prefer to use INTER_LINEAR or INTER_CUBIC interpolation. If you are shrinking the image, you should prefer to use INTER_AREA interpolation.
@@ -97,7 +99,7 @@ class ImageProcessor:
         elif self.mask == "half":
             mask = torch.ones((self.resolution, self.resolution))
             height = mask.shape[0]
-            mask[height // 2 :, :] = 0
+            mask[height // 2:, :] = 0
             mask = mask.unsqueeze(0)
         elif self.mask == "eye":
             mask = torch.ones((self.resolution, self.resolution))
@@ -123,7 +125,15 @@ class ImageProcessor:
         else:
             detected_faces = self.fa.get_landmarks(image)
             if detected_faces is None:
-                raise RuntimeError("Face not detected")
+                # raise RuntimeError("Face not detected")
+                # print("Face not detected_affine_transform")
+                # 当检测不到人脸时，返回默认值，而不是跳过帧
+                # 默认人脸图像：全零张量
+                placeholder_face = torch.zeros(3, self.resolution, self.resolution)
+                # 默认框
+                placeholder_box = [0, 0, 0, 0]
+
+                return placeholder_face, placeholder_box, None
             lm68 = detected_faces[0]
 
         points = self.smoother.smooth(lm68)
@@ -260,7 +270,6 @@ landmark_points_68 = [
     14,
     87,
 ]
-
 
 # Refer to https://storage.googleapis.com/mediapipe-assets/documentation/mediapipe_face_landmark_fullsize.png
 mouth_surround_landmarks = [
