@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import argparse
-from omegaconf import OmegaConf
+
 import torch
+from accelerate.utils import set_seed
 from diffusers import AutoencoderKL, DDIMScheduler
+from diffusers.utils.import_utils import is_xformers_available
+from omegaconf import OmegaConf
+
 from latentsync.models.unet import UNet3DConditionModel
 from latentsync.pipelines.lipsync_pipeline import LipsyncPipeline
-from diffusers.utils.import_utils import is_xformers_available
-from accelerate.utils import set_seed
 from latentsync.whisper.audio2feature import Audio2Feature
 
 
@@ -79,6 +81,7 @@ def main(config, args):
         video_out_path=args.video_out_path,
         video_mask_path=args.video_out_path.replace(".mp4", "_mask.mp4"),
         num_frames=config.data.num_frames,
+        video_fps=config.data.video_fps,
         num_inference_steps=args.inference_steps,
         guidance_scale=args.guidance_scale,
         weight_dtype=dtype,

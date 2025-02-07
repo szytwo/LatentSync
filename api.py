@@ -33,6 +33,7 @@ def process_video(
         guidance_scale,
         inference_steps,
         seed,
+        fps
 ):
     # Create the temp directory if it doesn't exist
     output_dir = Path(f"{result_dir}/output")
@@ -55,7 +56,11 @@ def process_video(
             "inference_steps": inference_steps,
         }
     )
-
+    config["data"].update(
+        {
+            "video_fps": fps,
+        }
+    )
     # Parse the arguments
     args = create_args(video_path, audio_path, output_path, inference_steps, guidance_scale, seed)
 
