@@ -232,7 +232,8 @@ async def do(
             audio_path=audio_upload,
             guidance_scale=scale,
             inference_steps=steps,
-            seed=seed
+            seed=seed,
+            fps=fps
         )
         bbox_range = ''
         # 返回视频响应
