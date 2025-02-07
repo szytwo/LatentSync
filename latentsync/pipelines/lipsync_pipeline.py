@@ -472,9 +472,8 @@ class LipsyncPipeline(DiffusionPipeline):
         if is_train:
             self.unet.train()
 
-        audio_output_path = os.path.join(temp_dir, "audio.wav")
-        sf.write(audio_output_path, audio_samples, audio_sample_rate)
+        audio_out_path = os.path.join(temp_dir, "audio.wav")
+        sf.write(audio_out_path, audio_samples, audio_sample_rate)
 
         video_metadata = get_video_metadata(video_path)
-        video_output_path = os.path.join(temp_dir, "video.mp4")
-        write_video_ffmpeg(temp_img_dir, video_output_path, video_fps, audio_output_path, video_metadata)
+        write_video_ffmpeg(temp_img_dir, video_out_path, video_fps, audio_out_path, video_metadata)
