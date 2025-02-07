@@ -69,13 +69,14 @@ def process_video(
             config=config,
             args=args,
         )
-        clear_cuda_cache()
         logging.info("Processing completed successfully.")
         return output_path  # Ensure the output path is returned
     except Exception as e:
         errmsg = f"Error during processing: {str(e)}"
         logging.error(errmsg)
         raise RuntimeError(errmsg)
+    finally:
+        clear_cuda_cache()
 
 
 def create_args(
