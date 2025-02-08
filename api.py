@@ -44,7 +44,7 @@ def process_video(
     video_path = video_file_path.absolute().as_posix()
     audio_path = Path(audio_path).absolute().as_posix()
 
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    current_time = datetime.now().strftime("%H%M%S")
     # Set the output path for the processed video
     output_path = str(output_dir / f"{video_file_path.stem}_{current_time}.mp4")  # Change the filename as needed
 
