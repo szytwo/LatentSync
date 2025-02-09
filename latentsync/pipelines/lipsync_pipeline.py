@@ -480,7 +480,7 @@ class LipsyncPipeline(DiffusionPipeline):
             output_wav_path=audio_out_path
         )
         # 原视频元数据
-        video_metadata = VideoProcessor.get_video_stream_metadata(video_path)
+        video_metadata = VideoProcessor.get_video_metadata(video_path)
         # 写入视频
         VideoProcessor.write_video_ffmpeg(
             img_save_path=temp_img_dir,

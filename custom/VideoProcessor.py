@@ -117,12 +117,12 @@ class VideoProcessor:
         """利用 ffprobe 获取多媒体文件时长（单位：秒）"""
         metadata = VideoProcessor.get_media_metadata(media_path)
         # 从 format 元数据中提取时长
-        duration = float(metadata.get("format", {}).get("duration", 0.0))
+        duration = float(metadata.get("format", {}).get("duration", "0.0"))
 
         return duration
 
     @staticmethod
-    def get_video_stream_metadata(media_path):
+    def get_video_metadata(media_path):
         """获取视频文件的元数据信息"""
         metadata = VideoProcessor.get_media_metadata(media_path)
         # 查找第一个视频流
@@ -136,14 +136,9 @@ class VideoProcessor:
     @staticmethod
     def get_video_frame_rate(media_path):
         """获取视频文件的帧率"""
-        metadata = VideoProcessor.get_media_metadata(media_path)
-        # 查找第一个视频流
-        video_stream = next((stream for stream in metadata.get("streams", []) if stream.get("codec_type") == "video"),
-                            None)
-        if not video_stream:
-            raise ValueError("未找到视频流")
+        video_metadata = VideoProcessor.get_video_metadata(media_path)
         # 获取 r_frame_rate
-        r_frame_rate = video_stream.get("r_frame_rate", "0/1")
+        r_frame_rate = video_metadata.get("r_frame_rate", "0/1")
         # 计算帧率
         num, denom = map(int, r_frame_rate.split('/'))
         frame_rate = num / denom if denom != 0 else 0
