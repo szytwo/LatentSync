@@ -25,6 +25,8 @@ result_input_dir = f'{result_dir}/input'
 result_output_dir = f'{result_dir}/output'
 CONFIG_PATH = Path("configs/unet/second_stage.yaml")
 CHECKPOINT_PATH = Path("checkpoints/latentsync_unet.pt")
+# 输入样本连续视频帧数量，可能提升效果
+num_frames = 16
 
 
 def process_video(
@@ -58,6 +60,7 @@ def process_video(
     )
     config["data"].update(
         {
+            "num_frames": num_frames,
             "video_fps": fps,
         }
     )
@@ -269,11 +272,14 @@ if __name__ == "__main__":
                             default=7810)
     # 设置显存比例限制（浮点类型，默认值为 0）
     parserMain.add_argument("--cuda_memory", type=float, default=0)
+    parserMain.add_argument("--num_frames", type=int, default=num_frames)
     argsMain = parserMain.parse_args()
     # 设置显存比例限制
     if argsMain.cuda_memory > 0:
         logging.info(f"cuda_memory: {argsMain.cuda_memory}")
         torch.cuda.set_per_process_memory_fraction(argsMain.cuda_memory)
+
+    num_frames = argsMain.num_frames
 
     try:
         # 删除临时文件
