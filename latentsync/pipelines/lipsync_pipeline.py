@@ -6,7 +6,6 @@ import shutil
 from pathlib import Path
 from typing import Callable, List, Optional, Union
 
-import soundfile as sf
 import torch
 import torchvision
 import tqdm
@@ -26,10 +25,11 @@ from diffusers.utils import is_accelerate_available
 from einops import rearrange
 from packaging import version
 
+from custom.AudioProcessor import AudioProcessor
+from custom.VideoProcessor import VideoProcessor
 from ..models.unet import UNet3DConditionModel
 from ..utils.image_processor import ImageProcessor
-from ..utils.util import read_video, read_audio, check_ffmpeg_installed, save_frame, write_video_ffmpeg, \
-    get_video_metadata
+from ..utils.util import read_video, read_audio, check_ffmpeg_installed
 from ..whisper.audio2feature import Audio2Feature
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
@@ -280,7 +280,7 @@ class LipsyncPipeline(DiffusionPipeline):
             width = int(x2 - x1)
             # 当检测不到人脸时，返回原帧
             if height <= 0 or width <= 0:
-                save_frame(index, video_frames[index], temp_dir)
+                VideoProcessor.save_frame(index, video_frames[index], temp_dir)
                 continue
 
             face = torchvision.transforms.functional.resize(face, size=(height, width), antialias=True)
@@ -289,7 +289,7 @@ class LipsyncPipeline(DiffusionPipeline):
             face = (face * 255).to(torch.uint8).cpu().numpy()
             # face = cv2.resize(face, (width, height), interpolation=cv2.INTER_LANCZOS4)
             out_frame = self.image_processor.restorer.restore_img(video_frames[index], face, affine_matrices[index])
-            save_frame(index, out_frame, temp_dir)
+            VideoProcessor.save_frame(index, out_frame, temp_dir)
 
         return faces.shape[0]
 
@@ -466,14 +466,26 @@ class LipsyncPipeline(DiffusionPipeline):
             affine_matrices
         )
 
-        audio_samples_remain_length = int(video_frames_length / video_fps * audio_sample_rate)
-        audio_samples = audio_samples[:audio_samples_remain_length].cpu().numpy()
-
         if is_train:
             self.unet.train()
 
         audio_out_path = os.path.join(temp_dir, "audio.wav")
-        sf.write(audio_out_path, audio_samples, audio_sample_rate)
+        # 计算视频时长（秒）
+        video_duration = video_frames_length / video_fps
 
-        video_metadata = get_video_metadata(video_path)
-        write_video_ffmpeg(temp_img_dir, video_out_path, video_fps, audio_out_path, video_metadata)
+        audio_out_path = AudioProcessor.video_align_audio(
+            audio_samples=audio_samples,
+            video_duration=video_duration,
+            audio_sample_rate=audio_sample_rate,
+            output_wav_path=audio_out_path
+        )
+        # 原视频元数据
+        video_metadata = VideoProcessor.get_video_stream_metadata(video_path)
+        # 写入视频
+        VideoProcessor.write_video_ffmpeg(
+            img_save_path=temp_img_dir,
+            output_video=video_out_path,
+            fps=video_fps,
+            audio_path=audio_out_path,
+            video_metadata=video_metadata
+        )

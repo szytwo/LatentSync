@@ -3,6 +3,7 @@ import math
 import os
 import subprocess
 
+import cv2
 from fastapi import UploadFile
 
 from custom.TextProcessor import TextProcessor
@@ -90,6 +91,9 @@ class VideoProcessor:
 
     @staticmethod
     def get_media_metadata(media_path):
+        """
+        使用 ffprobe 提取媒体文件的元数据，并以 JSON 格式返回。
+        """
         cmd = [
             "ffprobe",
             "-i", media_path,
@@ -100,7 +104,11 @@ class VideoProcessor:
             "-loglevel", "error"
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
-        metadata = json.loads(result.stdout)
+
+        try:
+            metadata = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            metadata = {}
 
         return metadata
 
@@ -112,6 +120,18 @@ class VideoProcessor:
         duration = float(metadata.get("format", {}).get("duration", 0.0))
 
         return duration
+
+    @staticmethod
+    def get_video_stream_metadata(media_path):
+        """获取视频文件的元数据信息"""
+        metadata = VideoProcessor.get_media_metadata(media_path)
+        # 查找第一个视频流
+        video_stream = next((stream for stream in metadata.get("streams", []) if stream.get("codec_type") == "video"),
+                            None)
+        if not video_stream:
+            raise ValueError("未找到视频流")
+
+        return video_stream
 
     @staticmethod
     def get_video_frame_rate(media_path):
@@ -223,3 +243,52 @@ class VideoProcessor:
             subprocess.run(cmd_concat, capture_output=True, text=True, check=True)
 
         return output_path
+
+    @staticmethod
+    def save_frame(i, combine_frame, img_output_path):
+        # 保存图片
+        output_path = f"{img_output_path}/{str(i).zfill(8)}.png"
+
+        combine_frame = cv2.cvtColor(combine_frame, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(output_path, combine_frame)
+
+        return output_path
+
+    @staticmethod
+    def write_video_ffmpeg(img_save_path, output_video, fps, audio_path, video_metadata):
+        print(f"Writing image into video...")
+        # 提取关键颜色信息
+        pix_fmt = video_metadata.get("pix_fmt", "yuv420p")
+        color_range = video_metadata.get("color_range", "1")
+        color_space = video_metadata.get("color_space", "1")
+        color_transfer = video_metadata.get("color_transfer", "1")
+        color_primaries = video_metadata.get("color_primaries", "1")
+
+        # 将图像序列转换为视频
+        img_sequence_str = os.path.join(img_save_path, "%08d.png")  # 8位数字格式
+        # 创建 FFmpeg 命令来合成视频
+        cmd = [
+            "ffmpeg",
+            "-framerate", str(fps),  # 设置帧率
+            "-i", img_sequence_str,  # 图像序列
+            "-i", audio_path,  # 音频文件
+            "-c:v", "libx264",  # 使用 x264 编码
+            "-pix_fmt", pix_fmt,  # 设置像素格式
+            "-color_range", color_range,  # 设置色彩范围
+            "-colorspace", color_space,  # 设置色彩空间
+            "-color_trc", color_transfer,  # 设置色彩传递特性
+            "-color_primaries", color_primaries,  # 设置色彩基准
+            "-c:a", "aac",  # 使用 AAC 编码音频
+            "-b:a", "192k",  # 设置音频比特率
+            "-ar", "44100",
+            "-ac", "2",
+            "-preset", "slow",  # 设置编码器预设
+            "-crf", "18",  # 设置 CRF 值来控制视频质量
+            "-y",
+            output_video  # 输出文件路径
+        ]
+
+        # 执行 FFmpeg 命令
+        subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+        return output_video

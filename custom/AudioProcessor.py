@@ -3,6 +3,7 @@ import uuid
 
 import librosa
 import numpy as np
+import soundfile as sf
 from fastapi import UploadFile
 from noisereduce import reduce_noise
 from pydub import AudioSegment
@@ -206,3 +207,64 @@ class AudioProcessor:
             return wav_path
         except Exception as e:
             raise Exception(f"{upload_file.filename}音频文件保存或转换失败: {str(e)}")
+
+    @staticmethod
+    def video_align_audio(audio_samples, video_duration: float, audio_sample_rate: int, output_wav_path):
+        """
+        根据视频时长调整音频播放速度（通过重采样实现），并保存为 WAV 文件。
+
+        参数：
+            audio_samples: 音频数据，可以是 torch.Tensor（会自动转换为 numpy 数组）或 numpy 数组，
+                         假设原始采样率为 audio_sample_rate。
+            video_duration: 视频时长（秒）。
+            audio_sample_rate: 音频采样率（Hz）。
+            output_wav_path: 输出 WAV 文件的保存路径
+
+        返回：
+            保存成功后返回输出路径，否则返回 None。
+        """
+
+        try:
+            # 如果 audio_samples 是 torch.Tensor，则转换为 numpy 数组
+            if hasattr(audio_samples, 'cpu'):
+                audio_samples = audio_samples.cpu().numpy()
+
+            # 计算视频时长（秒）以及目标音频样本数
+            target_length = int(video_duration * audio_sample_rate)
+            original_length = len(audio_samples)
+
+            # 如果原始音频长度与目标长度不一致，则进行重采样
+            if original_length != target_length:
+                # 计算新的采样率，使得重采样后音频样本数大致为 target_length
+                # 公式：new_sr = audio_sample_rate * (target_length / original_length)
+                target_sr = audio_sample_rate * (target_length / original_length)
+
+                # 针对单通道和多通道数据分别处理
+                if audio_samples.ndim == 1:
+                    adjusted_audio = librosa.resample(
+                        audio_samples,
+                        orig_sr=audio_sample_rate,
+                        target_sr=target_sr)
+                else:
+                    num_channels = audio_samples.shape[1]
+                    resampled_channels = []
+                    for ch in range(num_channels):
+                        # 提取当前通道数据
+                        channel_data = audio_samples[:, ch]
+                        # 重采样当前通道
+                        resampled_channel = librosa.resample(
+                            channel_data,
+                            orig_sr=audio_sample_rate,
+                            target_sr=target_sr
+                        )
+                        resampled_channels.append(resampled_channel)
+                    # 将各通道数据沿最后一个维度合并
+                    adjusted_audio = np.stack(resampled_channels, axis=-1)
+                audio_samples = adjusted_audio
+
+            # 将调整后的音频数据写入 WAV 文件，写入时仍使用原始采样率
+            sf.write(output_wav_path, audio_samples, audio_sample_rate)
+            return output_wav_path
+        except Exception as e:
+            print(f"Error in adjust_audio_speed_and_save: {e}")
+            return None

@@ -110,16 +110,6 @@ def read_audio(audio_path: str, audio_sample_rate: int = 16000):
     return audio_samples
 
 
-def save_frame(i, combine_frame, img_output_path):
-    # 保存图片
-    output_path = f"{img_output_path}/{str(i).zfill(8)}.png"
-
-    combine_frame = cv2.cvtColor(combine_frame, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(output_path, combine_frame)
-
-    return output_path
-
-
 def write_video(video_output_path: str, video_frames: np.ndarray, fps: int):
     height, width = video_frames[0].shape[:2]
     out = cv2.VideoWriter(video_output_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
@@ -128,58 +118,6 @@ def write_video(video_output_path: str, video_frames: np.ndarray, fps: int):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         out.write(frame)
     out.release()
-
-
-def write_video_ffmpeg(img_save_path, output_video, fps, audio_path, video_metadata):
-    print(f"Writing image into video...")
-    # 提取关键颜色信息
-    pix_fmt = video_metadata.get("pix_fmt", "yuv420p")
-    color_range = video_metadata.get("color_range", "1")
-    color_space = video_metadata.get("color_space", "1")
-    color_transfer = video_metadata.get("color_transfer", "1")
-    color_primaries = video_metadata.get("color_primaries", "1")
-
-    # 将图像序列转换为视频
-    img_sequence_str = os.path.join(img_save_path, "%08d.png")  # 8位数字格式
-    # 创建 FFmpeg 命令来合成视频
-    cmd = [
-        "ffmpeg",
-        "-framerate", str(fps),  # 设置帧率
-        "-i", img_sequence_str,  # 图像序列
-        "-i", audio_path,  # 音频文件
-        "-c:v", "libx264",  # 使用 x264 编码
-        "-pix_fmt", pix_fmt,  # 设置像素格式
-        "-color_range", color_range,  # 设置色彩范围
-        "-colorspace", color_space,  # 设置色彩空间
-        "-color_trc", color_transfer,  # 设置色彩传递特性
-        "-color_primaries", color_primaries,  # 设置色彩基准
-        "-c:a", "aac",  # 使用 AAC 编码音频
-        "-b:a", "192k",  # 设置音频比特率
-        "-ar", "44100",
-        "-ac", "2",
-        "-preset", "slow",  # 设置编码器预设
-        "-crf", "18",  # 设置 CRF 值来控制视频质量
-        "-y",
-        output_video  # 输出文件路径
-    ]
-
-    # 执行 FFmpeg 命令
-    subprocess.run(cmd, capture_output=True, text=True, check=True)
-
-    return output_video
-
-
-def get_video_metadata(video_path):
-    cmd = [
-        "ffprobe", "-i", video_path, "-show_streams", "-select_streams", "v", "-hide_banner", "-loglevel", "error"
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    metadata = {}
-    for line in result.stdout.splitlines():
-        if "=" in line:
-            key, value = line.split("=", 1)
-            metadata[key.strip()] = value.strip()
-    return metadata
 
 
 def init_dist(backend="nccl", **kwargs):
