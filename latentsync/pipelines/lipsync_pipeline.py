@@ -473,7 +473,7 @@ class LipsyncPipeline(DiffusionPipeline):
         # 计算视频时长（秒）
         video_duration = video_frames_length / video_fps
 
-        audio_out_path = AudioProcessor.video_align_audio(
+        audio_out_path = AudioProcessor.audio_samples_save_wav(
             audio_samples=audio_samples,
             video_duration=video_duration,
             audio_sample_rate=audio_sample_rate,
