@@ -150,7 +150,8 @@ class AudioProcessor:
             prefix: str,
             volume_multiplier: float = 1.0,
             nonsilent: bool = False,
-            reduce_noise_enabled: bool = True
+            reduce_noise_enabled: bool = True,
+            delay: int = 0
     ):
         """保存上传文件并转换为 WAV 格式（如果需要）"""
         # 构造文件路径
@@ -201,6 +202,12 @@ class AudioProcessor:
 
             if volume_multiplier != 1.0:
                 audio = self.volume_safely(audio, volume_multiplier=volume_multiplier)
+
+            if delay > 0:
+                # 创建 delay 毫秒的静音
+                silence = AudioSegment.silent(duration=delay)
+                # 拼接音频 + 静音
+                audio = audio + silence
             # 保存调整后的音频
             audio.export(wav_path, format="wav")
 
@@ -266,5 +273,36 @@ class AudioProcessor:
             sf.write(output_wav_path, audio_samples, audio_sample_rate)
             return output_wav_path
         except Exception as e:
-            print(f"Error in adjust_audio_speed_and_save: {e}")
+            print(f"Error in video_align_audio: {e}")
+            return None
+
+    @staticmethod
+    def audio_samples_save_wav(audio_samples, video_duration: float, audio_sample_rate: int, output_wav_path):
+        """
+        保存音频数据为 WAV 文件。
+
+        参数：
+            audio_samples: 音频数据，可以是 torch.Tensor（会自动转换为 numpy 数组）或 numpy 数组，
+                         假设原始采样率为 audio_sample_rate。
+            video_duration: 视频时长（秒）。
+            audio_sample_rate: 音频采样率（Hz）。
+            output_wav_path: 输出 WAV 文件的保存路径
+
+        返回：
+            保存成功后返回输出路径，否则返回 None。
+        """
+
+        try:
+            # 如果 audio_samples 是 torch.Tensor，则转换为 numpy 数组
+            if hasattr(audio_samples, 'cpu'):
+                audio_samples = audio_samples.cpu().numpy()
+
+            # 计算视频时长（秒）以及目标音频样本数
+            target_length = int(video_duration * audio_sample_rate)
+            audio_samples = audio_samples[: target_length]
+            # 将调整后的音频数据写入 WAV 文件，写入时仍使用原始采样率
+            sf.write(output_wav_path, audio_samples, audio_sample_rate)
+            return output_wav_path
+        except Exception as e:
+            print(f"Error in audio_samples_save_wav: {e}")
             return None
