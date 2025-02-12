@@ -10,6 +10,7 @@ from fastapi import FastAPI, File, UploadFile, Query
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from func_timeout import func_timeout, FunctionTimedOut
 from omegaconf import OmegaConf
 from starlette.middleware.cors import CORSMiddleware  # 引入 CORS中间件模块
 
@@ -81,6 +82,36 @@ def process_video(
         clear_cuda_cache()
 
     return output_path  # Ensure the output path is returned
+
+
+def process_video_timeout(
+        video_path,
+        audio_path,
+        guidance_scale,
+        inference_steps,
+        seed,
+        fps):
+    """
+    执行process_video，带超时，防止卡死
+    """
+    timeout_sec = 3600  # 超时时间
+
+    try:
+        output_path = func_timeout(
+            timeout_sec,
+            process_video,
+            kwargs={
+                "video_path": video_path,
+                "audio_path": audio_path,
+                "guidance_scale": guidance_scale,
+                "inference_steps": inference_steps,
+                "seed": seed,
+                "fps": fps,
+            },
+        )
+        return output_path
+    except FunctionTimedOut:
+        raise Exception(f"process_video 执行超时 {timeout_sec}s")
 
 
 def create_args(
@@ -234,7 +265,7 @@ async def do(
         seed_data = generate_seed()
         seed = seed_data["value"]
 
-        output_path = process_video(
+        output_path = process_video_timeout(
             video_path=video_upload,
             audio_path=audio_upload,
             guidance_scale=scale,
