@@ -297,12 +297,8 @@ async def do(
 async def download(
         name: str = Query(..., description="输入文件路径"),
 ):
-    try:
-        file_name = Path(name).name
-        return FileResponse(path=name, filename=file_name, media_type='application/octet-stream')
-    except Exception as e:
-        TextProcessor.log_error(e)
-        return JSONResponse({"errcode": -1, "errmsg": str(e)})
+    file_name = Path(name).name
+    return FileResponse(path=name, filename=file_name, media_type='application/octet-stream')
 
 
 def get_main_args():
