@@ -1,6 +1,7 @@
 import argparse
 import gc
 import random
+import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -77,7 +78,10 @@ def process_video(
     except Exception as e:
         errmsg = f"Error during processing: {str(e)}"
         logging.error(errmsg)
-        raise RuntimeError(errmsg)
+        # 获取完整堆栈信息
+        full_trace = traceback.format_exc()
+        errmsg = f"{errmsg}\nFull traceback:\n{full_trace}"
+        raise RuntimeError(errmsg) from e
     finally:
         clear_cuda_cache()
 
@@ -293,8 +297,12 @@ async def do(
 async def download(
         name: str = Query(..., description="输入文件路径"),
 ):
-    file_name = Path(name).name
-    return FileResponse(path=name, filename=file_name, media_type='application/octet-stream')
+    try:
+        file_name = Path(name).name
+        return FileResponse(path=name, filename=file_name, media_type='application/octet-stream')
+    except Exception as e:
+        TextProcessor.log_error(e)
+        return JSONResponse({"errcode": -1, "errmsg": str(e)})
 
 
 def get_main_args():
