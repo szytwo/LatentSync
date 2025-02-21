@@ -271,22 +271,17 @@ class VideoProcessor:
     def save_frame(i, combine_frame, img_output_path):
         # 保存图片
         output_path = f"{img_output_path}/{str(i).zfill(8)}.png"
-
         combine_frame = cv2.cvtColor(combine_frame, cv2.COLOR_RGB2BGR)
         cv2.imwrite(output_path, combine_frame)
 
         return output_path
 
     @staticmethod
-    def write_video_ffmpeg(img_save_path, output_video, fps, audio_path, video_metadata):
+    def write_video_ffmpeg(img_save_path, output_video, fps, audio_path, original_video_path):
         print(f"Writing image into video...")
         # 提取关键颜色信息
-        pix_fmt = video_metadata.get("pix_fmt", "yuv420p")
-        color_range = video_metadata.get("color_range", "1")
-        color_space = video_metadata.get("color_space", "1")
-        color_transfer = video_metadata.get("color_transfer", "1")
-        color_primaries = video_metadata.get("color_primaries", "1")
-
+        pix_fmt, color_range, color_space, color_transfer, color_primaries = VideoProcessor.get_video_colorinfo(
+            original_video_path)
         # 将图像序列转换为视频
         img_sequence_str = os.path.join(img_save_path, "%08d.png")  # 8位数字格式
         # 创建 FFmpeg 命令来合成视频
@@ -310,7 +305,6 @@ class VideoProcessor:
             "-y",
             output_video  # 输出文件路径
         ]
-
         # 执行 FFmpeg 命令
         subprocess.run(cmd, capture_output=True, text=True, check=True)
 

@@ -487,13 +487,11 @@ class LipsyncPipeline(DiffusionPipeline):
             audio_sample_rate=audio_sample_rate,
             output_wav_path=audio_out_path
         )
-        # 原视频元数据
-        video_metadata = VideoProcessor.get_video_metadata(video_path)
         # 写入视频
         VideoProcessor.write_video_ffmpeg(
             img_save_path=temp_img_dir,
             output_video=video_out_path,
             fps=video_fps,
             audio_path=audio_out_path,
-            video_metadata=video_metadata
+            original_video_path=video_path
         )
