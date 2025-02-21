@@ -260,7 +260,7 @@ async def do(
             volume_multiplier=1.0,
             nonsilent=False,
             reduce_noise_enabled=False,
-            delay=200
+            delay=300
         )
 
         video_upload, fps = video_processor.convert_video_fps(video_upload, fps)
