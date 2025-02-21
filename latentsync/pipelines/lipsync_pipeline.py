@@ -29,7 +29,7 @@ from custom.AudioProcessor import AudioProcessor
 from custom.VideoProcessor import VideoProcessor
 from ..models.unet import UNet3DConditionModel
 from ..utils.image_processor import ImageProcessor
-from ..utils.util import read_video, read_audio, check_ffmpeg_installed
+from ..utils.util import read_audio, check_ffmpeg_installed
 from ..whisper.audio2feature import Audio2Feature
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
@@ -256,31 +256,39 @@ class LipsyncPipeline(DiffusionPipeline):
         images = images.cpu().numpy()
         return images
 
-    def affine_transform_video(self, video_path):
-        video_frames = read_video(video_path, change_fps=False, use_decord=False)
+    def affine_transform_video(self, video_path, fps=25, batch_size: int = 32):
+        # video_frames = read_video(video_path, change_fps=False, use_decord=False)
+        video_frames = VideoProcessor.video_write_img(video_path, fps)
+        total_frames = len(video_frames)
         faces = []
         boxes = []
         affine_matrices = []
-        print(f"Affine transforming {len(video_frames)} faces...")
-        for frame in tqdm.tqdm(video_frames):
-            face, box, affine_matrix = self.image_processor.affine_transform(frame)
-            faces.append(face)
-            boxes.append(box)
-            affine_matrices.append(affine_matrix)
+        print(f"Affine transforming {total_frames} faces...")
+        # 按批处理
+        # noinspection PyTypeChecker
+        for i in tqdm.tqdm(range(0, total_frames, batch_size)):
+            batch_files = video_frames[i: i + batch_size]
+            batch_frames = VideoProcessor.read_imgs_cv2(batch_files)
+            for frame in batch_frames:
+                face, box, affine_matrix = self.image_processor.affine_transform(frame)
+                faces.append(face)
+                boxes.append(box)
+                affine_matrices.append(affine_matrix)
 
         faces = torch.stack(faces)
         return faces, video_frames, boxes, affine_matrices
 
     def restore_video(self, temp_dir, faces, video_frames, boxes, affine_matrices):
-        video_frames = video_frames[: faces.shape[0]]
+        # video_frames = video_frames[: faces.shape[0]]
         print(f"Restoring {len(faces)} faces...")
         for index, face in enumerate(tqdm.tqdm(faces)):
+            original_frame = VideoProcessor.read_img_cv2(video_frames[index])
             x1, y1, x2, y2 = boxes[index]
             height = int(y2 - y1)
             width = int(x2 - x1)
             # 当检测不到人脸时，返回原帧
             if height <= 0 or width <= 0:
-                VideoProcessor.save_frame(index, video_frames[index], temp_dir)
+                VideoProcessor.save_frame(index, original_frame, temp_dir)
                 continue
 
             face = torchvision.transforms.functional.resize(face, size=(height, width), antialias=True)
@@ -288,7 +296,7 @@ class LipsyncPipeline(DiffusionPipeline):
             face = (face / 2 + 0.5).clamp(0, 1)
             face = (face * 255).to(torch.uint8).cpu().numpy()
             # face = cv2.resize(face, (width, height), interpolation=cv2.INTER_LANCZOS4)
-            out_frame = self.image_processor.restorer.restore_img(video_frames[index], face, affine_matrices[index])
+            out_frame = self.image_processor.restorer.restore_img(original_frame, face, affine_matrices[index])
             VideoProcessor.save_frame(index, out_frame, temp_dir)
 
         return faces.shape[0]
@@ -326,7 +334,7 @@ class LipsyncPipeline(DiffusionPipeline):
         self.image_processor = ImageProcessor(height, mask=mask, device="cuda")
         self.set_progress_bar_config(desc=f"Sample frames: {num_frames}")
 
-        faces, original_video_frames, boxes, affine_matrices = self.affine_transform_video(video_path)
+        faces, original_video_frames, boxes, affine_matrices = self.affine_transform_video(video_path, video_fps)
         audio_samples = read_audio(audio_path)
 
         # 1. Default height and width to unet

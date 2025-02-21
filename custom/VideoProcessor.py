@@ -1,9 +1,13 @@
 import json
 import math
 import os
+import shutil
 import subprocess
+import traceback
+from pathlib import Path
 
 import cv2
+import numpy as np
 from fastapi import UploadFile
 
 from custom.TextProcessor import TextProcessor
@@ -144,6 +148,28 @@ class VideoProcessor:
         frame_rate = num / denom if denom != 0 else 0
 
         return frame_rate
+
+    @staticmethod
+    def get_video_colorinfo(media_path):
+        """获取视频文件的颜色信息"""
+        # 获取原视频元数据
+        video_metadata = VideoProcessor.get_video_metadata(media_path)
+        # 提取关键颜色信息
+        pix_fmt = video_metadata.get("pix_fmt", "yuv420p")
+        color_range = video_metadata.get("color_range", "1")
+        color_space = video_metadata.get("color_space", "1")
+        color_transfer = video_metadata.get("color_transfer", "1")
+        color_primaries = video_metadata.get("color_primaries", "1")
+
+        if color_space.lower() == "reserved":
+            color_space = "bt709"
+            logging.warning(f"检测到 color_space 为 'reserved'，已替换为默认值 'bt709'")
+
+        if color_primaries.lower() == "reserved":
+            color_primaries = "bt709"
+            logging.warning(f"检测到 color_primaries 为 'reserved'，已替换为默认值 'bt709'")
+
+        return pix_fmt, color_range, color_space, color_transfer, color_primaries
 
     @staticmethod
     def process_video_with_audio(video_path: str, audio_path: str):
@@ -287,3 +313,65 @@ class VideoProcessor:
         subprocess.run(cmd, capture_output=True, text=True, check=True)
 
         return output_video
+
+    @staticmethod
+    def video_write_img(video_path, fps=25):
+        """
+          使用 FFmpeg 从视频中提取帧并保存为图片。
+
+          :param video_path: 输入视频文件路径
+          :param fps: 提取帧的帧率
+          :return: 保存的图片路径列表
+          """
+
+        try:
+            logging.info(f"正在从视频中提取帧并保存为图片...")
+
+            video_dir = Path(video_path).parent
+            video_file_name = Path(video_path).stem
+            save_dir = f"{video_dir}/{video_file_name}"  # 帧图像保存目录
+
+            if os.path.exists(save_dir):
+                shutil.rmtree(save_dir)
+
+            os.makedirs(save_dir, exist_ok=True)
+            output_pattern = os.path.join(save_dir, "%08d.png")  # 保存为零填充8位的序列图片
+            # FFmpeg 命令
+            cmd = [
+                "ffmpeg",
+                "-i", video_path,  # 输入视频
+                "-vf", f"fps={fps}",  # 设置输出帧率
+                "-q:v", "2",  # 输出质量（PNG 的情况下无效，JPEG 可用）
+                "-start_number", "0",  # 从 0 开始编号
+                "-y",
+                output_pattern  # 输出图片序列的文件模式
+            ]
+            # 执行 FFmpeg 命令
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
+            # 返回所有保存图片的路径
+            save_paths = sorted([os.path.join(save_dir, f) for f in os.listdir(save_dir) if f.endswith(".png")])
+
+            logging.info(f"所有帧已保存至 {save_dir}")
+            return save_paths
+        except subprocess.CalledProcessError as e:
+            # 捕获任何在处理过程中发生的异常
+            errmsg = f"Error ffmpeg: {e.stderr}"
+            logging.error(errmsg)
+            # 获取完整堆栈信息
+            full_trace = traceback.format_exc()
+            errmsg = f"{errmsg}\nFull traceback:\n{full_trace}"
+            raise RuntimeError(errmsg) from e
+
+    @staticmethod
+    def read_img_cv2(img_path):
+        frame = cv2.imread(img_path)
+        # Convert BGR to RGB
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        return frame_rgb
+
+    @staticmethod
+    def read_imgs_cv2(img_list):
+        frames = []
+        for img_path in img_list:
+            frames.append(VideoProcessor.read_img_cv2(img_path))
+        return np.array(frames)
