@@ -171,6 +171,7 @@ class VideoProcessor:
 
         return pix_fmt, color_range, color_space, color_transfer, color_primaries
 
+    # noinspection PyTypeChecker
     @staticmethod
     def process_video_with_audio(video_path: str, audio_path: str):
         # 获取视频和音频时长
@@ -265,6 +266,7 @@ class VideoProcessor:
 
         return output_path
 
+    # noinspection PyTypeChecker
     @staticmethod
     def save_frame(i, combine_frame, img_output_path):
         # 保存图片
