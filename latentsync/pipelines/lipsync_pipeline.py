@@ -279,33 +279,46 @@ class LipsyncPipeline(DiffusionPipeline):
         faces = torch.stack(faces)
         return faces, video_frames, boxes, affine_matrices
 
-    def restore_video(self, temp_dir, faces, video_frames, boxes, affine_matrices):
+    # noinspection PyTypeChecker
+    def restore_video(self, temp_dir, faces, video_frames, boxes, affine_matrices, batch_size: int = 128):
         # video_frames = video_frames[: faces.shape[0]]
-        print(f"Restoring {len(faces)} faces...")
+        total_faces = len(faces)
+        print(f"Restoring {total_faces} faces...")
         # 获取 CPU 核心数
         max_workers = os.cpu_count() / 2
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = []
-            for index, face in enumerate(tqdm.tqdm(faces)):
-                original_frame = VideoProcessor.read_img_cv2(video_frames[index])
-                x1, y1, x2, y2 = boxes[index]
-                height = int(y2 - y1)
-                width = int(x2 - x1)
-                # 当检测不到人脸时，返回原帧
-                if height <= 0 or width <= 0:
-                    out_frame = original_frame
-                else:
-                    face = torchvision.transforms.functional.resize(face, size=(height, width), antialias=True)
-                    face = rearrange(face, "c h w -> h w c")
-                    face = (face / 2 + 0.5).clamp(0, 1)
-                    face = (face * 255).to(torch.uint8).cpu().numpy()
-                    # face = cv2.resize(face, (width, height), interpolation=cv2.INTER_LANCZOS4)
-                    out_frame = self.image_processor.restorer.restore_img(original_frame, face, affine_matrices[index])
+        # 分批并行读取
+        for i in tqdm.tqdm(range(0, total_faces, batch_size)):
+            # 当前批次的数据
+            batch_faces = faces[i:i + batch_size]
+            batch_boxes = boxes[i:i + batch_size]
+            batch_affine_matrices = affine_matrices[i:i + batch_size]
+            batch_video_frames = video_frames[i:i + batch_size]
+            batch_original_frames = VideoProcessor.read_imgs_cv2_parallel(batch_video_frames)
 
-                futures.append(executor.submit(VideoProcessor.save_frame, index, out_frame, temp_dir))
-            # 等待所有任务完成
-            for future in futures:
-                future.result()
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = []
+                for idx, (face, original_frame, boxe, affine_matrice) in enumerate(
+                        zip(batch_faces, batch_original_frames, batch_boxes, batch_affine_matrices)):
+                    x1, y1, x2, y2 = boxe
+                    height = int(y2 - y1)
+                    width = int(x2 - x1)
+                    # 当检测不到人脸时，返回原帧
+                    if height <= 0 or width <= 0:
+                        out_frame = original_frame
+                    else:
+                        face = torchvision.transforms.functional.resize(face, size=(height, width), antialias=True)
+                        face = rearrange(face, "c h w -> h w c")
+                        face = (face / 2 + 0.5).clamp(0, 1)
+                        face = (face * 255).to(torch.uint8).cpu().numpy()
+                        # face = cv2.resize(face, (width, height), interpolation=cv2.INTER_LANCZOS4)
+                        out_frame = self.image_processor.restorer.restore_img(original_frame, face,
+                                                                              affine_matrice)
+                    # 保存帧操作可以并行执行
+                    frame_index = i + idx  # 计算全局帧索引
+                    futures.append(executor.submit(VideoProcessor.save_frame, frame_index, out_frame, temp_dir))
+                # 等待所有任务完成
+                for future in futures:
+                    future.result()
 
         return faces.shape[0]
 
