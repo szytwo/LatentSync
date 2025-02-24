@@ -245,6 +245,7 @@ async def do(
         JSONResponse: 包含处理结果的 JSON 响应。
     """
 
+    args = get_main_args()
     try:
         # 初始化处理器
         video_processor = VideoProcessor()
@@ -260,7 +261,7 @@ async def do(
             volume_multiplier=1.0,
             nonsilent=False,
             reduce_noise_enabled=False,
-            delay=300
+            delay=args.audio_delay
         )
 
         video_upload, fps = video_processor.convert_video_fps(video_upload, fps)
@@ -307,6 +308,7 @@ def get_main_args():
     # 设置显存比例限制（浮点类型，默认值为 0）
     parser.add_argument("--cuda_memory", type=float, default=0)
     parser.add_argument("--num_frames", type=int, default=16)
+    parser.add_argument("--audio_delay", type=int, default=500)
 
     return parser.parse_args()  # ✅ 每次调用都解析参数
 

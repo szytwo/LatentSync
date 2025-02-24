@@ -351,11 +351,16 @@ class LipsyncPipeline(DiffusionPipeline):
 
         # 0. Define call parameters
         batch_size = 1
+        batch_video_frame_size = num_frames * 16
         device = self._execution_device
         self.image_processor = ImageProcessor(height, mask=mask, device="cuda")
         self.set_progress_bar_config(desc=f"Sample frames: {num_frames}")
 
-        faces, original_video_frames, boxes, affine_matrices = self.affine_transform_video(video_path, video_fps)
+        faces, original_video_frames, boxes, affine_matrices = self.affine_transform_video(
+            video_path=video_path,
+            fps=video_fps,
+            batch_size=batch_video_frame_size
+        )
         audio_samples = read_audio(audio_path)
 
         # 1. Default height and width to unet
@@ -488,11 +493,12 @@ class LipsyncPipeline(DiffusionPipeline):
         os.makedirs(temp_img_dir, exist_ok=True)
 
         video_frames_length = self.restore_video(
-            temp_img_dir,
-            torch.cat(synced_video_frames),
-            original_video_frames,
-            boxes,
-            affine_matrices
+            temp_dir=temp_img_dir,
+            faces=torch.cat(synced_video_frames),
+            video_frames=original_video_frames,
+            boxes=boxes,
+            affine_matrices=affine_matrices,
+            batch_size=batch_video_frame_size
         )
 
         if is_train:
