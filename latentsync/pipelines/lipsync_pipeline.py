@@ -3,6 +3,7 @@
 import inspect
 import os
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable, List, Optional, Union
 
@@ -281,23 +282,30 @@ class LipsyncPipeline(DiffusionPipeline):
     def restore_video(self, temp_dir, faces, video_frames, boxes, affine_matrices):
         # video_frames = video_frames[: faces.shape[0]]
         print(f"Restoring {len(faces)} faces...")
-        for index, face in enumerate(tqdm.tqdm(faces)):
-            original_frame = VideoProcessor.read_img_cv2(video_frames[index])
-            x1, y1, x2, y2 = boxes[index]
-            height = int(y2 - y1)
-            width = int(x2 - x1)
-            # 当检测不到人脸时，返回原帧
-            if height <= 0 or width <= 0:
-                VideoProcessor.save_frame(index, original_frame, temp_dir)
-                continue
+        # 获取 CPU 核心数
+        max_workers = os.cpu_count() / 2
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for index, face in enumerate(tqdm.tqdm(faces)):
+                original_frame = VideoProcessor.read_img_cv2(video_frames[index])
+                x1, y1, x2, y2 = boxes[index]
+                height = int(y2 - y1)
+                width = int(x2 - x1)
+                # 当检测不到人脸时，返回原帧
+                if height <= 0 or width <= 0:
+                    out_frame = original_frame
+                else:
+                    face = torchvision.transforms.functional.resize(face, size=(height, width), antialias=True)
+                    face = rearrange(face, "c h w -> h w c")
+                    face = (face / 2 + 0.5).clamp(0, 1)
+                    face = (face * 255).to(torch.uint8).cpu().numpy()
+                    # face = cv2.resize(face, (width, height), interpolation=cv2.INTER_LANCZOS4)
+                    out_frame = self.image_processor.restorer.restore_img(original_frame, face, affine_matrices[index])
 
-            face = torchvision.transforms.functional.resize(face, size=(height, width), antialias=True)
-            face = rearrange(face, "c h w -> h w c")
-            face = (face / 2 + 0.5).clamp(0, 1)
-            face = (face * 255).to(torch.uint8).cpu().numpy()
-            # face = cv2.resize(face, (width, height), interpolation=cv2.INTER_LANCZOS4)
-            out_frame = self.image_processor.restorer.restore_img(original_frame, face, affine_matrices[index])
-            VideoProcessor.save_frame(index, out_frame, temp_dir)
+                futures.append(executor.submit(VideoProcessor.save_frame, index, out_frame, temp_dir))
+            # 等待所有任务完成
+            for future in futures:
+                future.result()
 
         return faces.shape[0]
 
