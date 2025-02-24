@@ -256,7 +256,7 @@ class LipsyncPipeline(DiffusionPipeline):
         images = images.cpu().numpy()
         return images
 
-    def affine_transform_video(self, video_path, fps=25, batch_size: int = 32):
+    def affine_transform_video(self, video_path, fps=25, batch_size: int = 128):
         # video_frames = read_video(video_path, change_fps=False, use_decord=False)
         video_frames = VideoProcessor.video_write_img(video_path, fps)
         total_frames = len(video_frames)
@@ -268,7 +268,7 @@ class LipsyncPipeline(DiffusionPipeline):
         # noinspection PyTypeChecker
         for i in tqdm.tqdm(range(0, total_frames, batch_size)):
             batch_files = video_frames[i: i + batch_size]
-            batch_frames = VideoProcessor.read_imgs_cv2(batch_files)
+            batch_frames = VideoProcessor.read_imgs_cv2_parallel(batch_files)
             for frame in batch_frames:
                 face, box, affine_matrix = self.image_processor.affine_transform(frame)
                 faces.append(face)

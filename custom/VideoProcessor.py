@@ -375,7 +375,9 @@ class VideoProcessor:
         return np.array(frames)
 
     @staticmethod
-    def read_imgs_cv2_parallel(img_list, max_workers=8):
+    def read_imgs_cv2_parallel(img_list):
+        # 获取 CPU 核心数
+        max_workers = os.cpu_count() / 2
         frames = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # executor.map 保证顺序一致
