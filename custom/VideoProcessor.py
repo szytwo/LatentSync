@@ -304,6 +304,8 @@ class VideoProcessor:
             "-ac", "2",
             "-preset", "slow",  # 设置编码器预设
             "-crf", "18",  # 设置 CRF 值来控制视频质量
+            "-shortest",
+            "-vsync", "vfr",
             "-y",
             output_video  # 输出文件路径
         ]
