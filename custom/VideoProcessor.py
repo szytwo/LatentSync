@@ -313,17 +313,24 @@ class VideoProcessor:
         return output_video
 
     @staticmethod
-    def video_write_img(video_path, fps=25):
+    def video_write_img(video_path, audio_duration, max_duration=20.0, fps=25):
         """
           使用 FFmpeg 从视频中提取帧并保存为图片。
 
           :param video_path: 输入视频文件路径
+          :param audio_duration: 音频时长
+          :param max_duration: 提取帧的时长
           :param fps: 提取帧的帧率
           :return: 保存的图片路径列表
           """
 
         try:
-            logging.info(f"正在从视频中提取帧并保存为图片...")
+            # 获取音频和视频的时长
+            video_duration = VideoProcessor.get_duration(video_path)
+            max_duration = min(max_duration, audio_duration, video_duration)
+
+            logging.info(f"视频 {video_duration} 秒，音频 {audio_duration} 秒")
+            logging.info(f"正在从视频中提取前 {max_duration} 秒的帧并保存为图片...")
 
             video_dir = Path(video_path).parent
             video_file_name = Path(video_path).stem
@@ -338,6 +345,7 @@ class VideoProcessor:
             cmd = [
                 "ffmpeg",
                 "-i", video_path,  # 输入视频
+                "-t", str(max_duration),  # 截取前 max_duration 秒
                 "-vf", f"fps={fps}",  # 设置输出帧率
                 "-q:v", "2",  # 输出质量（PNG 的情况下无效，JPEG 可用）
                 "-start_number", "0",  # 从 0 开始编号

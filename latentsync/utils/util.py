@@ -107,7 +107,10 @@ def read_audio(audio_path: str, audio_sample_rate: int = 16000):
     audio_samples = torch.from_numpy(ar[:].asnumpy())
     audio_samples = audio_samples.squeeze(0)
 
-    return audio_samples
+    # 获取音频的时长 (秒)
+    duration = ar.duration()
+    
+    return audio_samples, duration
 
 
 def write_video(video_output_path: str, video_frames: np.ndarray, fps: int):

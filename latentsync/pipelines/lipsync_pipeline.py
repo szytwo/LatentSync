@@ -1,6 +1,7 @@
 # Adapted from https://github.com/guoyww/AnimateDiff/blob/main/animatediff/pipelines/pipeline_animation.py
 
 import inspect
+import math
 import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor
@@ -28,10 +29,10 @@ from packaging import version
 
 from custom.AudioProcessor import AudioProcessor
 from custom.VideoProcessor import VideoProcessor
-from ..models.unet import UNet3DConditionModel
-from ..utils.image_processor import ImageProcessor
-from ..utils.util import read_audio, check_ffmpeg_installed
-from ..whisper.audio2feature import Audio2Feature
+from latentsync.models.unet import UNet3DConditionModel
+from latentsync.utils.image_processor import ImageProcessor
+from latentsync.utils.util import read_audio, check_ffmpeg_installed
+from latentsync.whisper.audio2feature import Audio2Feature
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -257,17 +258,22 @@ class LipsyncPipeline(DiffusionPipeline):
         images = images.cpu().numpy()
         return images
 
-    def affine_transform_video(self, video_path, fps=25, batch_size: int = 128):
+    # noinspection PyTypeChecker
+    def affine_transform_video(self, video_path, audio_duration, fps=25, batch_size: int = 128):
         # video_frames = read_video(video_path, change_fps=False, use_decord=False)
-        video_frames = VideoProcessor.video_write_img(video_path, fps)
-        total_frames = len(video_frames)
+        video_frames = VideoProcessor.video_write_img(
+            video_path=video_path,
+            audio_duration=audio_duration,
+            fps=fps
+        )
+        video_frames_len = len(video_frames)
+        video_frames_total_len = math.ceil(audio_duration * fps)
         faces = []
         boxes = []
         affine_matrices = []
-        print(f"Affine transforming {total_frames} faces...")
+        print(f"Affine transforming {video_frames_len} make up {video_frames_total_len} faces ...")
         # 按批处理
-        # noinspection PyTypeChecker
-        for i in tqdm.tqdm(range(0, total_frames, batch_size)):
+        for i in tqdm.tqdm(range(0, video_frames_len, batch_size)):
             batch_files = video_frames[i: i + batch_size]
             batch_frames = VideoProcessor.read_imgs_cv2_parallel(batch_files)
             for frame in batch_frames:
@@ -275,6 +281,23 @@ class LipsyncPipeline(DiffusionPipeline):
                 faces.append(face)
                 boxes.append(box)
                 affine_matrices.append(affine_matrix)
+        # 倒序做法
+        faces_cycle = faces + faces[::-1]
+        video_frames_cycle = video_frames + video_frames[::-1]
+        boxes_cycle = boxes + boxes[::-1]
+        affine_matrices_cycle = affine_matrices + affine_matrices[::-1]
+
+        faces = []
+        video_frames = []
+        boxes = []
+        affine_matrices = []
+
+        for i in tqdm.tqdm(range(0, video_frames_total_len)):
+            index = i % len(faces_cycle)
+            faces.append(faces_cycle[index])
+            video_frames.append(video_frames_cycle[index])
+            boxes.append(boxes_cycle[index])
+            affine_matrices.append(affine_matrices_cycle[index])
 
         faces = torch.stack(faces)
         return faces, video_frames, boxes, affine_matrices
@@ -356,12 +379,14 @@ class LipsyncPipeline(DiffusionPipeline):
         self.image_processor = ImageProcessor(height, mask=mask, device="cuda")
         self.set_progress_bar_config(desc=f"Sample frames: {num_frames}")
 
+        audio_samples, audio_duration = read_audio(audio_path)
+
         faces, original_video_frames, boxes, affine_matrices = self.affine_transform_video(
             video_path=video_path,
             fps=video_fps,
-            batch_size=batch_video_frame_size
+            batch_size=batch_video_frame_size,
+            audio_duration=audio_duration
         )
-        audio_samples = read_audio(audio_path)
 
         # 1. Default height and width to unet
         height = height or self.unet.config.sample_size * self.vae_scale_factor
@@ -384,13 +409,23 @@ class LipsyncPipeline(DiffusionPipeline):
 
         self.video_fps = video_fps
 
+        faces_len = len(faces)
+        whisper_chunks_len = 0
         if self.unet.add_audio_layer:
             whisper_feature = self.audio_encoder.audio2feat(audio_path)
             whisper_chunks = self.audio_encoder.feature2chunks(feature_array=whisper_feature, fps=video_fps)
+            whisper_chunks_len = len(whisper_chunks)
 
-            num_inferences = min(len(faces), len(whisper_chunks)) // num_frames
+            num_inferences = min(faces_len, whisper_chunks_len) // num_frames
         else:
-            num_inferences = len(faces) // num_frames
+            num_inferences = faces_len // num_frames
+
+        print(f"inferenceing "
+              f"{faces_len} faces, "
+              f"{whisper_chunks_len} whisper_chunks, "
+              f"{num_inferences} num_inferences, "
+              f"{num_frames} num_frames "
+              f"...")
 
         synced_video_frames = []
         masked_video_frames = []

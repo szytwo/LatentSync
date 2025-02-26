@@ -261,11 +261,11 @@ async def do(
             volume_multiplier=1.0,
             nonsilent=False,
             reduce_noise_enabled=False,
-            delay=args.audio_delay
+            delay=int(args.num_frames / fps * 1000) + 200
         )
 
         video_upload, fps = video_processor.convert_video_fps(video_upload, fps)
-        video_upload = video_processor.process_video_with_audio(video_upload, audio_upload)
+        # video_upload = video_processor.process_video_with_audio(video_upload, audio_upload)
 
         seed_data = generate_seed()
         seed = seed_data["value"]
@@ -308,7 +308,6 @@ def get_main_args():
     # 设置显存比例限制（浮点类型，默认值为 0）
     parser.add_argument("--cuda_memory", type=float, default=0)
     parser.add_argument("--num_frames", type=int, default=16)
-    parser.add_argument("--audio_delay", type=int, default=500)
 
     return parser.parse_args()  # ✅ 每次调用都解析参数
 

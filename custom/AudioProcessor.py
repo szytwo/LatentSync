@@ -204,6 +204,7 @@ class AudioProcessor:
                 audio = self.volume_safely(audio, volume_multiplier=volume_multiplier)
 
             if delay > 0:
+                logging.info(f"delay start {delay}")
                 # 创建 delay 毫秒的静音
                 silence = AudioSegment.silent(duration=delay)
                 # 拼接音频 + 静音

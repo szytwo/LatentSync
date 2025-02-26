@@ -22,7 +22,7 @@ import torch
 from einops import rearrange
 from torchvision import transforms
 
-from .affine_transform import AlignRestore, laplacianSmooth
+from latentsync.utils.affine_transform import AlignRestore, laplacianSmooth
 
 """
 If you are enlarging the image, you should prefer to use INTER_LINEAR or INTER_CUBIC interpolation. If you are shrinking the image, you should prefer to use INTER_AREA interpolation.
