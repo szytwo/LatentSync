@@ -185,6 +185,7 @@ def clear_cuda_cache():
 origins = ["*"]  # "*"，即为所有。
 
 app = FastAPI(docs_url=None)
+# noinspection PyTypeChecker
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,  # 设置允许的origins来源
