@@ -129,7 +129,7 @@ def create_args(
         inference_steps: int,
         guidance_scale: float,
         seed: int,
-        max_duration: float
+        max_duration: int
 ) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--inference_ckpt_path", type=str, required=True)
@@ -139,7 +139,7 @@ def create_args(
     parser.add_argument("--inference_steps", type=int, default=20)
     parser.add_argument("--guidance_scale", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=1247)
-    parser.add_argument("--max_duration", type=float, default=20.0)
+    parser.add_argument("--max_duration", type=int, default=20)
 
     return parser.parse_args(
         [
@@ -252,7 +252,7 @@ async def do(
         scale: float = Query(default=1.0, description="指导尺度（浮点数，默认值为 1.0）"),
         steps: int = Query(default=20, description="推理步数（整数，默认值为 20）"),
         fps: int = Query(default=25, description="视频帧率（整数，默认值为 25）"),
-        max_duration: float = Query(default=20.0, description="使用视频时长，默认值为 20.0秒"),
+        max_duration: int = Query(default=20, description="使用视频时长，默认值为 20秒"),
 ):
     """
     处理视频和音频，生成带有字幕的视频。

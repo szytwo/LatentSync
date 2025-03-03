@@ -265,7 +265,7 @@ class LipsyncPipeline(DiffusionPipeline):
             audio_duration,
             fps=25,
             batch_size: int = 128,
-            max_duration: float = 20.0
+            max_duration: int = 20
     ):
         # video_frames = read_video(video_path, change_fps=False, use_decord=False)
         video_frames = VideoProcessor.video_write_img(
@@ -362,7 +362,7 @@ class LipsyncPipeline(DiffusionPipeline):
             video_mask_path: str = None,
             num_frames: int = 16,
             video_fps: int = 25,
-            max_duration: float = 20.0,
+            max_duration: int = 20,
             audio_sample_rate: int = 16000,
             height: Optional[int] = None,
             width: Optional[int] = None,
