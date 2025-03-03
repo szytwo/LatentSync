@@ -35,7 +35,8 @@ def process_video(
         guidance_scale,
         inference_steps,
         seed,
-        fps
+        fps,
+        max_duration
 ):
     args = get_main_args()
 
@@ -67,7 +68,7 @@ def process_video(
         }
     )
     # Parse the arguments
-    args = create_args(video_path, audio_path, output_path, inference_steps, guidance_scale, seed)
+    args = create_args(video_path, audio_path, output_path, inference_steps, guidance_scale, seed, max_duration)
 
     try:
         result = main(
@@ -94,7 +95,9 @@ def process_video_timeout(
         guidance_scale,
         inference_steps,
         seed,
-        fps):
+        fps,
+        max_duration
+):
     """
     执行process_video，带超时，防止卡死
     """
@@ -111,6 +114,7 @@ def process_video_timeout(
                 "inference_steps": inference_steps,
                 "seed": seed,
                 "fps": fps,
+                "max_duration": max_duration
             },
         )
         return output_path
@@ -119,7 +123,13 @@ def process_video_timeout(
 
 
 def create_args(
-        video_path: str, audio_path: str, output_path: str, inference_steps: int, guidance_scale: float, seed: int
+        video_path: str,
+        audio_path: str,
+        output_path: str,
+        inference_steps: int,
+        guidance_scale: float,
+        seed: int,
+        max_duration: float
 ) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--inference_ckpt_path", type=str, required=True)
@@ -129,6 +139,7 @@ def create_args(
     parser.add_argument("--inference_steps", type=int, default=20)
     parser.add_argument("--guidance_scale", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=1247)
+    parser.add_argument("--max_duration", type=float, default=20.0)
 
     return parser.parse_args(
         [
@@ -146,6 +157,8 @@ def create_args(
             str(guidance_scale),
             "--seed",
             str(seed),
+            "--max_duration",
+            str(max_duration),
         ]
     )
 
@@ -239,6 +252,7 @@ async def do(
         scale: float = Query(default=1.0, description="指导尺度（浮点数，默认值为 1.0）"),
         steps: int = Query(default=20, description="推理步数（整数，默认值为 20）"),
         fps: int = Query(default=25, description="视频帧率（整数，默认值为 25）"),
+        max_duration: float = Query(default=20.0, description="使用视频时长，默认值为 20.0秒"),
 ):
     """
     处理视频和音频，生成带有字幕的视频。
@@ -277,7 +291,8 @@ async def do(
             guidance_scale=scale,
             inference_steps=steps,
             seed=seed,
-            fps=fps
+            fps=fps,
+            max_duration=max_duration
         )
         bbox_range = ''
         # 返回视频响应

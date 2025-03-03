@@ -87,6 +87,7 @@ def main(config, args):
         weight_dtype=dtype,
         width=config.data.resolution,
         height=config.data.resolution,
+        max_duration=args.max_duration,
     )
 
 

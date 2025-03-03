@@ -259,11 +259,19 @@ class LipsyncPipeline(DiffusionPipeline):
         return images
 
     # noinspection PyTypeChecker
-    def affine_transform_video(self, video_path, audio_duration, fps=25, batch_size: int = 128):
+    def affine_transform_video(
+            self,
+            video_path,
+            audio_duration,
+            fps=25,
+            batch_size: int = 128,
+            max_duration: float = 20.0
+    ):
         # video_frames = read_video(video_path, change_fps=False, use_decord=False)
         video_frames = VideoProcessor.video_write_img(
             video_path=video_path,
             audio_duration=audio_duration,
+            max_duration=max_duration,
             fps=fps
         )
         video_frames_len = len(video_frames)
@@ -354,6 +362,7 @@ class LipsyncPipeline(DiffusionPipeline):
             video_mask_path: str = None,
             num_frames: int = 16,
             video_fps: int = 25,
+            max_duration: float = 20.0,
             audio_sample_rate: int = 16000,
             height: Optional[int] = None,
             width: Optional[int] = None,
@@ -385,7 +394,8 @@ class LipsyncPipeline(DiffusionPipeline):
             video_path=video_path,
             fps=video_fps,
             batch_size=batch_video_frame_size,
-            audio_duration=audio_duration
+            audio_duration=audio_duration,
+            max_duration=max_duration
         )
 
         # 1. Default height and width to unet
