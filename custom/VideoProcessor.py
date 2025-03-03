@@ -315,7 +315,12 @@ class VideoProcessor:
         return output_video
 
     @staticmethod
-    def video_write_img(video_path, audio_duration, max_duration=20.0, fps=25):
+    def video_write_img(
+            video_path: str,
+            audio_duration: float,
+            max_duration: float = 20,
+            fps: int = 25
+    ):
         """
           使用 FFmpeg 从视频中提取帧并保存为图片。
 
