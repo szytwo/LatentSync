@@ -399,7 +399,7 @@ class LipsyncPipeline(DiffusionPipeline):
 
         # 0. Define call parameters
         batch_size = 1
-        batch_video_frame_size = num_frames * 12
+        batch_video_frame_size = num_frames * 16
         device = self._execution_device
         self.image_processor = ImageProcessor(height, mask=mask, device="cuda")
         self.set_progress_bar_config(desc=f"Sample frames: {num_frames}")
