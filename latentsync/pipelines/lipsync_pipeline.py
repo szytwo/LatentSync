@@ -310,6 +310,15 @@ class LipsyncPipeline(DiffusionPipeline):
         faces = torch.stack(faces)
         return faces, video_frames, boxes, affine_matrices
 
+    def restore_img_save(self, i, temp_dir, original_frame, face, affine_matrice):
+        out_frame = self.image_processor.restorer.restore_img(
+            original_frame,
+            face,
+            affine_matrice
+        )
+
+        VideoProcessor.save_frame(i, out_frame, temp_dir)
+
     # noinspection PyTypeChecker
     def restore_video(self, temp_dir, faces, video_frames, boxes, affine_matrices, batch_size: int = 128):
         # video_frames = video_frames[: faces.shape[0]]
@@ -333,20 +342,27 @@ class LipsyncPipeline(DiffusionPipeline):
                     x1, y1, x2, y2 = boxe
                     height = int(y2 - y1)
                     width = int(x2 - x1)
+                    frame_index = i + idx  # 计算全局帧索引
                     # 当检测不到人脸时，返回原帧
                     if height <= 0 or width <= 0:
                         out_frame = original_frame
+                        # 保存帧操作可以并行执行
+                        futures.append(executor.submit(VideoProcessor.save_frame, frame_index, out_frame, temp_dir))
                     else:
                         face = torchvision.transforms.functional.resize(face, size=(height, width), antialias=True)
                         face = rearrange(face, "c h w -> h w c")
                         face = (face / 2 + 0.5).clamp(0, 1)
                         face = (face * 255).to(torch.uint8).cpu().numpy()
                         # face = cv2.resize(face, (width, height), interpolation=cv2.INTER_LANCZOS4)
-                        out_frame = self.image_processor.restorer.restore_img(original_frame, face,
-                                                                              affine_matrice)
-                    # 保存帧操作可以并行执行
-                    frame_index = i + idx  # 计算全局帧索引
-                    futures.append(executor.submit(VideoProcessor.save_frame, frame_index, out_frame, temp_dir))
+                        # 保存帧操作可以并行执行
+                        futures.append(executor.submit(
+                            self.restore_img_save,
+                            frame_index,
+                            temp_dir,
+                            original_frame,
+                            face,
+                            affine_matrice
+                        ))
                 # 等待所有任务完成
                 for future in futures:
                     future.result()
@@ -383,7 +399,7 @@ class LipsyncPipeline(DiffusionPipeline):
 
         # 0. Define call parameters
         batch_size = 1
-        batch_video_frame_size = num_frames * 16
+        batch_video_frame_size = num_frames * 12
         device = self._execution_device
         self.image_processor = ImageProcessor(height, mask=mask, device="cuda")
         self.set_progress_bar_config(desc=f"Sample frames: {num_frames}")
