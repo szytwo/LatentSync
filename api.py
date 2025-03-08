@@ -260,7 +260,7 @@ async def do(
         JSONResponse: 包含处理结果的 JSON 响应。
     """
     args = get_main_args()
-    
+
     try:
         # 初始化处理器
         video_processor = VideoProcessor()
@@ -276,7 +276,7 @@ async def do(
             volume_multiplier=1.0,
             nonsilent=False,
             reduce_noise_enabled=False,
-            delay=int(args.num_frames / fps * 1000) + 300
+            delay=int(args.num_frames / fps * 500)
         )
 
         video_upload, fps = video_processor.convert_video_fps(video_upload, fps)

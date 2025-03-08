@@ -265,7 +265,8 @@ class LipsyncPipeline(DiffusionPipeline):
             audio_duration,
             fps=25,
             batch_size: int = 128,
-            max_duration: int = 20
+            max_duration: int = 20,
+            whisper_chunks_len: int = 0
     ):
         # video_frames = read_video(video_path, change_fps=False, use_decord=False)
         video_frames = VideoProcessor.video_write_img(
@@ -275,7 +276,7 @@ class LipsyncPipeline(DiffusionPipeline):
             fps=fps
         )
         video_frames_len = len(video_frames)
-        video_frames_total_len = math.ceil(audio_duration * fps)
+        video_frames_total_len = whisper_chunks_len if whisper_chunks_len > 0 else math.ceil(audio_duration * fps)
         faces = []
         boxes = []
         affine_matrices = []
@@ -406,12 +407,19 @@ class LipsyncPipeline(DiffusionPipeline):
 
         audio_samples, audio_duration = read_audio(audio_path)
 
+        whisper_chunks_len = 0
+        if self.unet.add_audio_layer:
+            whisper_feature = self.audio_encoder.audio2feat(audio_path)
+            whisper_chunks = self.audio_encoder.feature2chunks(feature_array=whisper_feature, fps=video_fps)
+            whisper_chunks_len = len(whisper_chunks)
+
         faces, original_video_frames, boxes, affine_matrices = self.affine_transform_video(
             video_path=video_path,
             fps=video_fps,
             batch_size=batch_video_frame_size,
             audio_duration=audio_duration,
-            max_duration=max_duration
+            max_duration=max_duration,
+            whisper_chunks_len=whisper_chunks_len
         )
 
         # 1. Default height and width to unet
@@ -436,12 +444,7 @@ class LipsyncPipeline(DiffusionPipeline):
         self.video_fps = video_fps
 
         faces_len = len(faces)
-        whisper_chunks_len = 0
         if self.unet.add_audio_layer:
-            whisper_feature = self.audio_encoder.audio2feat(audio_path)
-            whisper_chunks = self.audio_encoder.feature2chunks(feature_array=whisper_feature, fps=video_fps)
-            whisper_chunks_len = len(whisper_chunks)
-
             num_inferences = min(faces_len, whisper_chunks_len) // num_frames
         else:
             num_inferences = faces_len // num_frames
