@@ -568,7 +568,8 @@ class LipsyncPipeline(DiffusionPipeline):
         if is_train:
             self.unet.train()
 
-        audio_out_path = os.path.join(temp_dir, "audio.wav")
+        audio_file_name = Path(audio_path).stem
+        audio_out_path = os.path.join(temp_dir, f"{audio_file_name}.wav")
         # 计算视频时长（秒）
         video_duration = video_frames_length / video_fps
 
