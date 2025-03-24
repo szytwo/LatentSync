@@ -1,9 +1,8 @@
 # 使用 PyTorch 官方 CUDA 12.1 运行时镜像
 FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
-# 替换 Debian 软件源为清华镜像
-RUN echo "deb http://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free" > /etc/apt/sources.list && \
-    echo "deb http://mirrors.tuna.tsinghua.edu.cn/debian-security bookworm-security main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb http://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-updates main contrib non-free" >> /etc/apt/sources.list
+# 替换软件源为清华镜像
+RUN sed -i 's|archive.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list && \
+    sed -i 's|security.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list
 
 # 更新 APT 索引并安装必要的系统依赖：
 # 直接从 Python 官网安装（推荐）
@@ -14,21 +13,50 @@ RUN apt-get update && apt-get install -y wget && \
     make -j$(nproc) && make altinstall && \
     rm -rf /var/lib/apt/lists/* Python-3.10.16 Python-3.10.16.tgz
 
-# - build-essential：构建工具
-# - ffmpeg：音视频处理工具
-# - libgl1-mesa-glx & libglib2.0-0：部分图形和 OpenCV 相关库
+# 安装编译依赖
 RUN apt-get update && \
     apt-get install -y \
-        build-essential \
-        ffmpeg \
-        libgl1-mesa-glx \
-        libglib2.0-0 && \
-    rm -rf /var/lib/apt/lists/*
-# 环境变量
-ENV NVIDIA_REQUIRE_CUDA=cuda>=12.1 brand=nvidia,driver>=525,driver<600
+    build-essential \
+    autoconf \
+    automake \
+    cmake \
+    git \
+    libtool \
+    pkg-config \
+    yasm \
+    nasm \
+    libx264-dev \
+    libx265-dev \
+    libvpx-dev \
+    libmp3lame-dev \
+    libopus-dev \
+    libfdk-aac-dev \
+    libass-dev \
+    libssl-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+# 下载并编译 FFmpeg
+RUN git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg && \
+    cd ffmpeg && \
+    ./configure \
+    --prefix=/usr/local \
+    --enable-gpl \
+    --enable-nonfree \
+    --enable-libx264 \
+    --enable-libx265 \
+    --enable-libvpx \
+    --enable-libmp3lame \
+    --enable-libopus \
+    --enable-libfdk-aac \
+    --enable-libass \
+    --enable-openssl \
+    --enable-shared \
+    && make -j$(nproc) \
+    && make install \
+    && ldconfig \
+    && cd .. \
+    && rm -rf ffmpeg
 
 # 设置容器内工作目录为 /code
 WORKDIR /code
