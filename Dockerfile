@@ -19,6 +19,7 @@ RUN apt-get update && \
 # RUN gcc --version
 
 # 安装 Python 3.10.16 到自定义路径
+# https://mirrors.aliyun.com/python-release/
 COPY wheels/linux/Python-3.10.16.tgz .
 
 RUN tar -xzf Python-3.10.16.tgz && \
@@ -35,6 +36,7 @@ RUN update-alternatives --install /usr/bin/pip3 pip3 /usr/local/python3.10.16/bi
 # RUN python --version && pip --version
 
 # 安装 FFmpeg
+# https://github.com/BtbN/FFmpeg-Builds/releases
 COPY wheels/linux/ffmpeg-master-latest-linux64-gpl.tar.xz .
 
 RUN tar -xJf ffmpeg-master-latest-linux64-gpl.tar.xz -C /usr/local \
