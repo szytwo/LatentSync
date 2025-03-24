@@ -18,9 +18,9 @@ RUN apt-get update && \
 
 # RUN gcc --version
 
+# 安装 Python 3.10.16 到自定义路径
 COPY wheels/linux/Python-3.10.16.tgz .
 
-# 安装 Python 3.10.16 到自定义路径
 RUN tar -xzf Python-3.10.16.tgz && \
     cd Python-3.10.16 && \
     ./configure --prefix=/usr/local/python3.10.16 --enable-optimizations && \
@@ -32,12 +32,11 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/local/python3.10
 RUN update-alternatives --install /usr/bin/pip3 pip3 /usr/local/python3.10.16/bin/pip3.10 1
 
 # 验证 Python 和 pip 版本
-RUN python --version && pip --version
+# RUN python --version && pip --version
 
-# 下载并编译 FFmpeg
+# 安装 FFmpeg
 COPY wheels/linux/ffmpeg-master-latest-linux64-gpl.tar.xz .
 
-# 下载并解压 FFmpeg
 RUN tar -xJf ffmpeg-master-latest-linux64-gpl.tar.xz -C /usr/local \
     && mv /usr/local/ffmpeg-* /usr/local/ffmpeg \
     && rm ffmpeg-master-latest-linux64-gpl.tar.xz
@@ -45,7 +44,7 @@ RUN tar -xJf ffmpeg-master-latest-linux64-gpl.tar.xz -C /usr/local \
 # 设置 FFmpeg 到环境变量
 ENV PATH="/usr/local/ffmpeg/bin:${PATH}"
 
-RUN ffmpeg --version
+# RUN ffmpeg -version
 
 # 设置容器内工作目录为 /code
 WORKDIR /code
