@@ -10,7 +10,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 from fastapi import UploadFile
-from tqdm import tqdm
 
 from custom.TextProcessor import TextProcessor
 from custom.file_utils import logging, add_suffix_to_filename
@@ -384,6 +383,7 @@ class VideoProcessor:
 
     @staticmethod
     def read_imgs_cv2(img_list):
+        logging.info(f"read imgs: {len(img_list)}")
         frames = []
         for img_path in img_list:
             frames.append(VideoProcessor.read_img_cv2(img_path))
@@ -396,7 +396,7 @@ class VideoProcessor:
         frames = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # executor.map 保证顺序一致
-            results = list(tqdm(executor.map(VideoProcessor.read_img_cv2, img_list), total=len(img_list)))
+            results = list(executor.map(VideoProcessor.read_img_cv2, img_list))
             frames.extend(results)
 
         return np.array(frames)

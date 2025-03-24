@@ -10,7 +10,6 @@ from typing import Callable, List, Optional, Union
 
 import torch
 import torchvision
-import tqdm
 from diffusers.configuration_utils import FrozenDict
 from diffusers.models import AutoencoderKL
 from diffusers.pipeline_utils import DiffusionPipeline
@@ -282,8 +281,11 @@ class LipsyncPipeline(DiffusionPipeline):
         affine_matrices = []
         print(f"Affine transforming {video_frames_len} make up {video_frames_total_len} faces ...")
         # 按批处理
-        for i in tqdm.tqdm(range(0, video_frames_len, batch_size)):
+        for i in range(0, video_frames_len, batch_size):
             batch_files = video_frames[i: i + batch_size]
+
+            print(f"Affine transforming {i} to {i + len(batch_files)} faces...")
+
             batch_frames = VideoProcessor.read_imgs_cv2_parallel(batch_files)
             for frame in batch_frames:
                 face, box, affine_matrix = self.image_processor.affine_transform(frame)
@@ -301,7 +303,8 @@ class LipsyncPipeline(DiffusionPipeline):
         boxes = []
         affine_matrices = []
 
-        for i in tqdm.tqdm(range(0, video_frames_total_len)):
+        print(f"make up {video_frames_total_len} faces ...")
+        for i in range(0, video_frames_total_len):
             index = i % len(faces_cycle)
             faces.append(faces_cycle[index])
             video_frames.append(video_frames_cycle[index])
@@ -328,9 +331,12 @@ class LipsyncPipeline(DiffusionPipeline):
         # 获取 CPU 核心数
         max_workers = os.cpu_count() / 2
         # 分批并行读取
-        for i in tqdm.tqdm(range(0, total_faces, batch_size)):
+        for i in range(0, total_faces, batch_size):
             # 当前批次的数据
             batch_faces = faces[i:i + batch_size]
+
+            print(f"Restoring {i} to {i + len(batch_faces)} faces...")
+
             batch_boxes = boxes[i:i + batch_size]
             batch_affine_matrices = affine_matrices[i:i + batch_size]
             batch_video_frames = video_frames[i:i + batch_size]
@@ -370,6 +376,7 @@ class LipsyncPipeline(DiffusionPipeline):
 
         return faces.shape[0]
 
+    # noinspection PyTypeChecker
     @torch.no_grad()
     def __call__(
             self,
@@ -403,7 +410,6 @@ class LipsyncPipeline(DiffusionPipeline):
         batch_video_frame_size = num_frames * 16
         device = self._execution_device
         self.image_processor = ImageProcessor(height, mask=mask, device="cuda")
-        self.set_progress_bar_config(desc=f"Sample frames: {num_frames}")
 
         audio_samples, audio_duration = read_audio(audio_path)
 
@@ -473,17 +479,25 @@ class LipsyncPipeline(DiffusionPipeline):
             generator,
         )
 
-        for i in tqdm.tqdm(range(num_inferences), desc="Doing inference..."):
+        print(f"Sample frames: {num_frames}, Doing inference {num_inferences}...")
+
+        for i in range(num_inferences):
+            start_frames = i * num_frames
+            end_frames = (i + 1) * num_frames
+
             if self.unet.add_audio_layer:
-                audio_embeds = torch.stack(whisper_chunks[i * num_frames: (i + 1) * num_frames])
+                audio_embeds = torch.stack(whisper_chunks[start_frames: end_frames])
                 audio_embeds = audio_embeds.to(device, dtype=weight_dtype)
                 if do_classifier_free_guidance:
                     null_audio_embeds = torch.zeros_like(audio_embeds)
                     audio_embeds = torch.cat([null_audio_embeds, audio_embeds])
             else:
                 audio_embeds = None
-            inference_faces = faces[i * num_frames: (i + 1) * num_frames]
-            latents = all_latents[:, :, i * num_frames: (i + 1) * num_frames]
+            inference_faces = faces[start_frames: end_frames]
+
+            print(f"Doing inference({i}): {start_frames} to {len(inference_faces)} faces")
+
+            latents = all_latents[:, :, start_frames: end_frames]
             pixel_values, masked_pixel_values, masks = self.image_processor.prepare_masks_and_masked_images(
                 inference_faces, affine_transform=False
             )
@@ -511,33 +525,31 @@ class LipsyncPipeline(DiffusionPipeline):
 
             # 9. Denoising loop
             num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
-            with self.progress_bar(total=num_inference_steps) as progress_bar:
-                for j, t in enumerate(timesteps):
-                    # expand the latents if we are doing classifier free guidance
-                    latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
+            for j, t in enumerate(timesteps):
+                # expand the latents if we are doing classifier free guidance
+                latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
 
-                    # concat latents, mask, masked_image_latents in the channel dimension
-                    latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
-                    latent_model_input = torch.cat(
-                        [latent_model_input, mask_latents, masked_image_latents, image_latents], dim=1
-                    )
+                # concat latents, mask, masked_image_latents in the channel dimension
+                latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+                latent_model_input = torch.cat(
+                    [latent_model_input, mask_latents, masked_image_latents, image_latents], dim=1
+                )
 
-                    # predict the noise residual
-                    noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=audio_embeds).sample
+                # predict the noise residual
+                noise_pred = self.unet(latent_model_input, t, encoder_hidden_states=audio_embeds).sample
 
-                    # perform guidance
-                    if do_classifier_free_guidance:
-                        noise_pred_uncond, noise_pred_audio = noise_pred.chunk(2)
-                        noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_audio - noise_pred_uncond)
+                # perform guidance
+                if do_classifier_free_guidance:
+                    noise_pred_uncond, noise_pred_audio = noise_pred.chunk(2)
+                    noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_audio - noise_pred_uncond)
 
-                    # compute the previous noisy sample x_t -> x_t-1
-                    latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
+                # compute the previous noisy sample x_t -> x_t-1
+                latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
 
-                    # call the callback, if provided
-                    if j == len(timesteps) - 1 or ((j + 1) > num_warmup_steps and (j + 1) % self.scheduler.order == 0):
-                        progress_bar.update()
-                        if callback is not None and j % callback_steps == 0:
-                            callback(j, t, latents)
+                # call the callback, if provided
+                if j == len(timesteps) - 1 or ((j + 1) > num_warmup_steps and (j + 1) % self.scheduler.order == 0):
+                    if callback is not None and j % callback_steps == 0:
+                        callback(j, t, latents)
 
             # Recover the pixel values
             decoded_latents = self.decode_latents(latents)
