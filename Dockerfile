@@ -63,9 +63,9 @@ RUN mkdir -p /root/.cache/torch/hub/checkpoints && \
     ln -s /code/checkpoints/auxiliary/vgg16-397923af.pth /root/.cache/torch/hub/checkpoints/vgg16-397923af.pth
 
 # 升级 pip 并安装 Python 依赖：
-RUN pip install --upgrade pip && \
-    pip install -r api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
-    rm -rf /wheels
+RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    && pip install -r api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    && rm -rf /wheels
 
 # 暴露容器端口
 EXPOSE 22
