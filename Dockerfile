@@ -36,4 +36,4 @@ RUN pip install --upgrade pip && \
 EXPOSE 7810
 
 # 容器启动时执行 api.py
-CMD ["python", "api.py"]
+# CMD ["python", "api.py"]
