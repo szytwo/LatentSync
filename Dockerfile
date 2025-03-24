@@ -3,7 +3,8 @@ FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 
 # 设置时区
 ENV TZ=Asia/Shanghai
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone
 
 # 设置容器内工作目录为 /workspace
 WORKDIR /workspace
@@ -20,6 +21,7 @@ RUN apt-get update && \
     xz-utils \
     libgl1-mesa-glx \
     libglib2.0-0 \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # RUN gcc --version
