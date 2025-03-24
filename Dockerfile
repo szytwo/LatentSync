@@ -5,12 +5,13 @@ FROM python:3.10.16-slim
 # - build-essential：构建工具
 # - ffmpeg：音视频处理工具
 # - libgl1-mesa-glx & libglib2.0-0：部分图形和 OpenCV 相关库
-RUN apt-get update && apt-get install -y \
+RUN apt-get update
+RUN apt-get install -y \
     build-essential \
     ffmpeg \
     libgl1-mesa-glx \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
+    libglib2.0-0
+RUN rm -rf /var/lib/apt/lists/*
 
 # 设置容器内工作目录为 /code
 WORKDIR /code
@@ -23,10 +24,10 @@ COPY wheels/torch-2.2.2+cu121-cp310-cp310-linux_x86_64.whl /wheels/torch-2.2.2+c
 # 1. 从本地 wheels 安装指定版本的 torch（避免网络下载大文件）
 # 2. 根据 api_requirements.txt 安装其它依赖，使用阿里云镜像加速
 # 3. 安装完成后删除 wheels 目录以减小镜像体积
-RUN pip install --upgrade pip && \
-    pip install --find-links=/wheels torch==2.2.2 && \
-    pip install -r api_requirements.txt -i https://mirrors.aliyun.com/pypi/simple && \
-    rm -rf /wheels
+RUN pip install --upgrade pip
+RUN pip install --find-links=/wheels torch==2.2.2
+RUN pip install -r api_requirements.txt
+RUN rm -rf /wheels
 
 # 将项目源代码复制到容器中
 COPY . /code
