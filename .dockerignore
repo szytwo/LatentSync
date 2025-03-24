@@ -1,5 +1,8 @@
+# git files
 .git
 .gitignore
+
+# gradio files
 .gradio/
 
 # PyCharm files
@@ -19,37 +22,9 @@
 __pycache__/
 
 # folders
-wandb/
-*debug*
-/debug
-/output
-/validation
-/test
-/models/
 /venv/
-/detect_results/
-/temp
 /results/
 /error/
-/example/
-
-# checkpoint files
-*.safetensors
-*.ckpt
-*.pt
-/checkpoints/
 
 # data files
-*.mp4
-*.avi
-*.wav
-*.png
-*.jpg
-*.jpeg
-*.csv
 *.bat
-
-!/latentsync/utils/mask.png
-!/assets/*
-
-/stabilityai/
