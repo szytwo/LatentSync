@@ -24,6 +24,6 @@ services:
     shm_size: '32g'
     ports:
       - '7810:7810'
-    command: python /code/api.py
+    command: python /code/api.py --num_frames 24
     networks:
       - ai_network
