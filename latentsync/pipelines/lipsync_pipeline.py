@@ -493,7 +493,7 @@ class LipsyncPipeline(DiffusionPipeline):
                 audio_embeds = None
             inference_faces = faces[start_frames: end_frames]
 
-            print(f"Doing inference({i}): {start_frames} to {len(inference_faces)} faces")
+            print(f"Doing inference({i}): {start_frames} to {start_frames + len(inference_faces)} faces")
 
             latents = all_latents[:, :, start_frames: end_frames]
             pixel_values, masked_pixel_values, masks = self.image_processor.prepare_masks_and_masked_images(
