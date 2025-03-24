@@ -1,11 +1,19 @@
-# 基于 Python 3.10.16-slim 镜像（Debian Bullseye 精简版）
-FROM python:3.10.16-slim
+# 使用 PyTorch 官方 CUDA 12.1 运行时镜像
+FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 # 替换 Debian 软件源为清华镜像
 RUN echo "deb http://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free" > /etc/apt/sources.list && \
     echo "deb http://mirrors.tuna.tsinghua.edu.cn/debian-security bookworm-security main contrib non-free" >> /etc/apt/sources.list && \
     echo "deb http://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-updates main contrib non-free" >> /etc/apt/sources.list
 
 # 更新 APT 索引并安装必要的系统依赖：
+# 直接从 Python 官网安装（推荐）
+RUN apt-get update && apt-get install -y wget && \
+    wget https://www.python.org/ftp/python/3.10.16/Python-3.10.16.tgz && \
+    tar -xzf Python-3.10.16.tgz && cd Python-3.10.16 && \
+    ./configure --enable-optimizations && \
+    make -j$(nproc) && make altinstall && \
+    rm -rf /var/lib/apt/lists/* Python-3.10.16 Python-3.10.16.tgz
+
 # - build-essential：构建工具
 # - ffmpeg：音视频处理工具
 # - libgl1-mesa-glx & libglib2.0-0：部分图形和 OpenCV 相关库
@@ -28,9 +36,7 @@ COPY . /code
 # 2. 根据 api_requirements.txt 安装其它依赖，使用阿里云镜像加速
 # 3. 安装完成后删除 wheels 目录以减小镜像体积
 RUN pip install --upgrade pip && \
-    pip install --find-links=/wheels torch==2.2.2 -i https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip install -r api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
-    rm -rf /wheels
+    pip install -r api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 暴露容器端口（这里设置为 7810，根据实际需求调整）
 EXPOSE 7810
