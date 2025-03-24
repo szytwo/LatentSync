@@ -479,8 +479,6 @@ class LipsyncPipeline(DiffusionPipeline):
             generator,
         )
 
-        print(f"Sample frames: {num_frames}, Doing inference {num_inferences}...")
-
         for i in range(num_inferences):
             start_frames = i * num_frames
             end_frames = (i + 1) * num_frames
