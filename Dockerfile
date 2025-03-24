@@ -25,8 +25,8 @@ COPY wheels/torch-2.2.2+cu121-cp310-cp310-linux_x86_64.whl /wheels/torch-2.2.2+c
 # 2. 根据 api_requirements.txt 安装其它依赖，使用阿里云镜像加速
 # 3. 安装完成后删除 wheels 目录以减小镜像体积
 RUN pip install --upgrade pip
-RUN pip install --find-links=/wheels torch==2.2.2
-RUN pip install -r api_requirements.txt
+RUN pip install --find-links=/wheels torch==2.2.2 -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install -r api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 RUN rm -rf /wheels
 
 # 将项目源代码复制到容器中
