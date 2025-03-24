@@ -1,5 +1,6 @@
 .git
 .gitignore
+.gradio/
 
 # PyCharm files
 .idea/
@@ -28,11 +29,15 @@ wandb/
 /venv/
 /detect_results/
 /temp
+/results/
+/error/
+/example/
 
 # checkpoint files
 *.safetensors
 *.ckpt
 *.pt
+/checkpoints/
 
 # data files
 *.mp4
@@ -42,16 +47,10 @@ wandb/
 *.jpg
 *.jpeg
 *.csv
+*.whl
+*.bat
 
 !/latentsync/utils/mask.png
-/checkpoints/
 !/assets/*
 
 /stabilityai/
-/results/
-/error/
-/example/
-*.whl
-.gradio/
-
-go-api-conda.bat
