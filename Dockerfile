@@ -29,13 +29,23 @@ RUN apt-get update && \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN gcc --version
+
 # 从 Python 官网安装（推荐）
-RUN apt-get update && apt-get install -y wget && \
-    wget https://www.python.org/ftp/python/3.10.16/Python-3.10.16.tgz && \
-    tar -xzf Python-3.10.16.tgz && cd Python-3.10.16 && \
-    ./configure --enable-optimizations && \
+# 安装 Python 3.10.16 到自定义路径
+RUN wget https://www.python.org/ftp/python/3.10.16/Python-3.10.16.tgz && \
+    tar -xzf Python-3.10.16.tgz && \
+    cd Python-3.10.16 && \
+    ./configure --prefix=/usr/local/python3.10.16 --enable-optimizations && \
     make -j$(nproc) && make altinstall && \
-    rm -rf /var/lib/apt/lists/* Python-3.10.16 Python-3.10.16.tgz
+    rm -rf Python-3.10.16 Python-3.10.16.tgz
+
+# 使用 update-alternatives 设置 Python 3.10.16 为默认 Python 版本
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/local/python3.10.16/bin/python3.10 1
+RUN update-alternatives --install /usr/bin/pip3 pip3 /usr/local/python3.10.16/bin/pip3.10 1
+
+# 验证 Python 和 pip 版本
+RUN python --version && pip --version
 
 # 下载并编译 FFmpeg
 RUN git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg && \
@@ -53,11 +63,16 @@ RUN git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg && \
     --enable-libass \
     --enable-openssl \
     --enable-shared \
+    --enable-cuda \
+    --enable-cuvid \
+    --enable-nvenc \
     && make -j$(nproc) \
     && make install \
     && ldconfig \
     && cd .. \
     && rm -rf ffmpeg
+
+RUN ffmpeg --version
 
 # 设置容器内工作目录为 /code
 WORKDIR /code
