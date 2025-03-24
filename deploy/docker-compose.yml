@@ -11,6 +11,7 @@ services:
     privileged: true
     volumes:
       - d:/AI/LatentSync/results:/code/results
+      - d:/AI/LatentSync/error:/code/error
     environment:
       - CUDA_VISIBLE_DEVICES=1
       - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
