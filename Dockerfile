@@ -4,18 +4,12 @@ FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 RUN sed -i 's|archive.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list && \
     sed -i 's|security.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list
 
-# 从 Python 官网安装（推荐）
-RUN apt-get update && apt-get install -y wget && \
-    wget https://www.python.org/ftp/python/3.10.16/Python-3.10.16.tgz && \
-    tar -xzf Python-3.10.16.tgz && cd Python-3.10.16 && \
-    ./configure --enable-optimizations && \
-    make -j$(nproc) && make altinstall && \
-    rm -rf /var/lib/apt/lists/* Python-3.10.16 Python-3.10.16.tgz
-
 # 安装编译依赖
 RUN apt-get update && \
     apt-get install -y \
     build-essential \
+    gcc g++ make \
+    wget \
     autoconf \
     automake \
     cmake \
@@ -34,6 +28,14 @@ RUN apt-get update && \
     libssl-dev \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# 从 Python 官网安装（推荐）
+RUN apt-get update && apt-get install -y wget && \
+    wget https://www.python.org/ftp/python/3.10.16/Python-3.10.16.tgz && \
+    tar -xzf Python-3.10.16.tgz && cd Python-3.10.16 && \
+    ./configure --enable-optimizations && \
+    make -j$(nproc) && make altinstall && \
+    rm -rf /var/lib/apt/lists/* Python-3.10.16 Python-3.10.16.tgz
 
 # 下载并编译 FFmpeg
 RUN git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg && \
