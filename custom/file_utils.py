@@ -107,16 +107,19 @@ def delete_old_files_and_folders(folder_path, days):
 
     logging.info(f"正在检查过期文件，并删除（{folder_path}）...")
     # 检查过期文件并删除
-    for file_path in tqdm(filepaths, total=len(filepaths)):
+    for file_path in filepaths:
         try:
             if os.path.isfile(file_path) and os.path.getmtime(file_path) < cutoff_time:
                 os.remove(file_path)
         except Exception as e:
             logging.error(f"Error deleting file {file_path}: {e}")
 
+    if filepaths:
+        logging.info(f"成功删除：{len(filepaths)} 个文件")
+
     logging.info(f"正在检查文件夹过期或空文件夹，并删除（{folder_path}）...")
     # 检查并删除空文件夹
-    for dir_path in tqdm(dirpaths, total=len(dirpaths)):
+    for dir_path in dirpaths:
         try:
             if (os.path.isdir(dir_path)
                     and (not os.listdir(dir_path) or os.path.getmtime(dir_path) < cutoff_time)
@@ -124,3 +127,6 @@ def delete_old_files_and_folders(folder_path, days):
                 shutil.rmtree(dir_path)
         except Exception as e:
             logging.error(f"Error deleting folder {dir_path}: {e}")
+
+    if dirpaths:
+        logging.info(f"成功删除：{len(dirpaths)} 个文件夹")
