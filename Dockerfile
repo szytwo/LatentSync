@@ -1,8 +1,6 @@
 # 使用 PyTorch 官方 CUDA 12.1 运行时镜像
 FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 
-
-
 # 设置容器内工作目录为 /workspace
 WORKDIR /workspace
 
@@ -26,16 +24,15 @@ RUN apt-get update && \
 COPY wheels/linux/Python-3.10.16.tgz .
 
 # 安装 Python 3.10.16 到自定义路径
+# 使用 update-alternatives 设置 Python 3.10.16 为默认 Python 版本
 RUN tar -xzf Python-3.10.16.tgz \
     && cd Python-3.10.16 \
     && ./configure --prefix=/usr/local/python3.10.16 --enable-optimizations \
     && make -j$(nproc) && make altinstall \
     && cd .. \
-    && rm -rf Python-3.10.16 Python-3.10.16.tgz
-
-# 使用 update-alternatives 设置 Python 3.10.16 为默认 Python 版本
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/local/python3.10.16/bin/python3.10 1
-RUN update-alternatives --install /usr/bin/pip3 pip3 /usr/local/python3.10.16/bin/pip3.10 1
+    && rm -rf Python-3.10.16 Python-3.10.16.tgz \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/local/python3.10.16/bin/python3.10 1 \
+    && update-alternatives --install /usr/bin/pip3 pip3 /usr/local/python3.10.16/bin/pip3.10 1
 
 # 验证 Python 和 pip 版本
 # RUN python --version && pip --version
