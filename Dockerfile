@@ -4,8 +4,7 @@ FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 RUN sed -i 's|archive.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list && \
     sed -i 's|security.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list
 
-# 更新 APT 索引并安装必要的系统依赖：
-# 直接从 Python 官网安装（推荐）
+# 从 Python 官网安装（推荐）
 RUN apt-get update && apt-get install -y wget && \
     wget https://www.python.org/ftp/python/3.10.16/Python-3.10.16.tgz && \
     tar -xzf Python-3.10.16.tgz && cd Python-3.10.16 && \
