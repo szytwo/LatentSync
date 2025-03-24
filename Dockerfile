@@ -81,13 +81,10 @@ WORKDIR /code
 COPY . /code
 
 # 升级 pip 并安装 Python 依赖：
-# 1. 从本地 wheels 安装指定版本的 torch（避免网络下载大文件）
-# 2. 根据 api_requirements.txt 安装其它依赖，使用阿里云镜像加速
-# 3. 安装完成后删除 wheels 目录以减小镜像体积
 RUN pip install --upgrade pip && \
     pip install -r api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# 暴露容器端口（这里设置为 7810，根据实际需求调整）
+# 暴露容器端口
 EXPOSE 22
 EXPOSE 80
 EXPOSE 7810
