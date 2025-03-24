@@ -1,6 +1,7 @@
 import argparse
 import gc
 import random
+import time
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -261,6 +262,8 @@ async def do(
     """
     args = get_main_args()
 
+    # 记录开始时间
+    start_time = time.time()
     try:
         # 初始化处理器
         video_processor = VideoProcessor()
@@ -295,6 +298,10 @@ async def do(
             max_duration=max_duration
         )
         bbox_range = ''
+        # 计算耗时
+        elapsed = time.time() - start_time
+        logging.info(f"口型生成完成，用时: {elapsed}")
+
         # 返回视频响应
         return JSONResponse({
             "errcode": 0,

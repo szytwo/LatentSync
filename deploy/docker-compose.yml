@@ -23,7 +23,7 @@ services:
               capabilities: [ gpu ]
     shm_size: '32g'
     ports:
-      - '17810:7810'
+      - '7810:7810'
     command: python /code/api.py
     networks:
       - ai_network-latentsync
