@@ -1,5 +1,6 @@
 # 使用 PyTorch 官方 CUDA 12.1 运行时镜像
 FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+
 # 替换软件源为清华镜像
 RUN sed -i 's|archive.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list && \
     sed -i 's|security.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list
@@ -29,9 +30,8 @@ RUN apt-get update && \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN gcc --version
+# RUN gcc --version
 
-# 从 Python 官网安装（推荐）
 # 安装 Python 3.10.16 到自定义路径
 RUN wget https://www.python.org/ftp/python/3.10.16/Python-3.10.16.tgz && \
     tar -xzf Python-3.10.16.tgz && \
@@ -45,7 +45,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/local/python3.10
 RUN update-alternatives --install /usr/bin/pip3 pip3 /usr/local/python3.10.16/bin/pip3.10 1
 
 # 验证 Python 和 pip 版本
-RUN python --version && pip --version
+# RUN python --version && pip --version
 
 # 下载并编译 FFmpeg
 RUN git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg && \
@@ -72,7 +72,7 @@ RUN git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg && \
     && cd .. \
     && rm -rf ffmpeg
 
-RUN ffmpeg --version
+# RUN ffmpeg --version
 
 # 设置容器内工作目录为 /code
 WORKDIR /code
