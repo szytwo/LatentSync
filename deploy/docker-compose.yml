@@ -1,5 +1,5 @@
 networks:
-  ai_network-latentsync:
+  ai_network:
     driver: bridge
 
 services:
@@ -26,4 +26,4 @@ services:
       - '7810:7810'
     command: python /code/api.py
     networks:
-      - ai_network-latentsync
+      - ai_network
