@@ -14,19 +14,21 @@ RUN apt-get update && \
     build-essential \
     gcc g++ make \
     xz-utils \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # RUN gcc --version
 
-# 安装 Python 3.10.16 到自定义路径
-# https://mirrors.aliyun.com/python-release/
 COPY wheels/linux/Python-3.10.16.tgz .
 
-RUN tar -xzf Python-3.10.16.tgz && \
-    cd Python-3.10.16 && \
-    ./configure --prefix=/usr/local/python3.10.16 --enable-optimizations && \
-    make -j$(nproc) && make altinstall && \
-    rm -rf Python-3.10.16 Python-3.10.16.tgz
+# 安装 Python 3.10.16 到自定义路径
+RUN tar -xzf Python-3.10.16.tgz \
+    && cd Python-3.10.16 \
+    && ./configure --prefix=/usr/local/python3.10.16 --enable-optimizations \
+    && make -j$(nproc) && make altinstall \
+    && cd .. \
+    && rm -rf Python-3.10.16 Python-3.10.16.tgz
 
 # 使用 update-alternatives 设置 Python 3.10.16 为默认 Python 版本
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/local/python3.10.16/bin/python3.10 1
@@ -35,10 +37,10 @@ RUN update-alternatives --install /usr/bin/pip3 pip3 /usr/local/python3.10.16/bi
 # 验证 Python 和 pip 版本
 # RUN python --version && pip --version
 
-# 安装 FFmpeg
-# https://github.com/BtbN/FFmpeg-Builds/releases
+# 下载并编译 FFmpeg
 COPY wheels/linux/ffmpeg-master-latest-linux64-gpl.tar.xz .
 
+# 下载并解压 FFmpeg
 RUN tar -xJf ffmpeg-master-latest-linux64-gpl.tar.xz -C /usr/local \
     && mv /usr/local/ffmpeg-* /usr/local/ffmpeg \
     && rm ffmpeg-master-latest-linux64-gpl.tar.xz
@@ -53,6 +55,12 @@ WORKDIR /code
 
 # 将项目源代码复制到容器中
 COPY . /code
+
+# 确保缓存目录存在
+RUN mkdir -p /root/.cache/torch/hub/checkpoints && \
+    ln -s /code/checkpoints/auxiliary/2DFAN4-cd938726ad.zip /root/.cache/torch/hub/checkpoints/2DFAN4-cd938726ad.zip && \
+    ln -s /code/checkpoints/auxiliary/s3fd-619a316812.pth /root/.cache/torch/hub/checkpoints/s3fd-619a316812.pth && \
+    ln -s /code/checkpoints/auxiliary/vgg16-397923af.pth /root/.cache/torch/hub/checkpoints/vgg16-397923af.pth
 
 # 升级 pip 并安装 Python 依赖：
 RUN pip install --upgrade pip && \
