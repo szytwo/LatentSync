@@ -47,7 +47,6 @@ wandb/
 *.jpg
 *.jpeg
 *.csv
-*.whl
 *.bat
 
 !/latentsync/utils/mask.png
