@@ -26,12 +26,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 # 环境变量
 ENV NVIDIA_REQUIRE_CUDA=cuda>=12.1 brand=nvidia,driver>=525,driver<600
-ENV NV_CUDA_CUDART_VERSION=12.1.105-1
-ENV CUDA_VERSION=12.1
-ENV NV_CUDA_COMPAT_PACKAGE=cuda-compat-12-1
-
-ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
 
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
