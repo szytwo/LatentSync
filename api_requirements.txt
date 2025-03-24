@@ -1,8 +1,9 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+
 torch==2.2.2
 torchvision==0.17.2
---extra-index-url https://download.pytorch.org/whl/cu121
-# xformers==0.0.26 #Linux 系统，是一个模块化的深度学习优化库，专注于高效实现 Transformer 模型的关键组件
-# triton==2.2.0 #Linux 系统，是 OpenAI 开发的一个高性能编译器，专为加速 GPU 上的自定义深度学习操作而设计
+xformers==0.0.26
+triton==2.2.0
 
 diffusers==0.11.1
 transformers==4.38.0
