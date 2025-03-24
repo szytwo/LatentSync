@@ -44,6 +44,8 @@ RUN pip install --upgrade pip && \
     pip install -r api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 暴露容器端口（这里设置为 7810，根据实际需求调整）
+EXPOSE 22
+EXPOSE 80
 EXPOSE 7810
 
 # 容器启动时执行 api.py
