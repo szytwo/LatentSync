@@ -8,12 +8,12 @@ WORKDIR /workspace
 RUN sed -i 's|archive.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list && \
     sed -i 's|security.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list
 
-# 完全不交互，使用默认值
+# 防止交互式安装，完全不交互，使用默认值
 ENV DEBIAN_FRONTEND=noninteractive
 # 设置时区
 ENV TZ=Asia/Shanghai
 
-# 安装编译依赖
+# 更新源并安装依赖
 RUN apt-get update && \
     apt-get install -y \
     build-essential \
