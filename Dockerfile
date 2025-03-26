@@ -30,10 +30,10 @@ RUN apt-get update && \
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone
 
-COPY wheels/linux/Python-3.10.16.tgz .
-
 # 安装 Python 3.10.16 到自定义路径
 # 使用 update-alternatives 设置 Python 3.10.16 为默认 Python 版本
+COPY wheels/linux/Python-3.10.16.tgz .
+
 RUN tar -xzf Python-3.10.16.tgz \
     && cd Python-3.10.16 \
     && ./configure --prefix=/usr/local/python3.10.16 --enable-optimizations \
@@ -46,10 +46,9 @@ RUN tar -xzf Python-3.10.16.tgz \
 # 验证 Python 和 pip 版本
 # RUN python --version && pip --version
 
-# 下载并编译 FFmpeg
+# 下载并解压 FFmpeg
 COPY wheels/linux/ffmpeg-master-latest-linux64-gpl.tar.xz .
 
-# 下载并解压 FFmpeg
 RUN tar -xJf ffmpeg-master-latest-linux64-gpl.tar.xz -C /usr/local \
     && mv /usr/local/ffmpeg-* /usr/local/ffmpeg \
     && rm ffmpeg-master-latest-linux64-gpl.tar.xz
