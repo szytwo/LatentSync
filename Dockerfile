@@ -8,6 +8,11 @@ WORKDIR /workspace
 RUN sed -i 's|archive.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list && \
     sed -i 's|security.ubuntu.com|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list
 
+# 完全不交互，使用默认值
+ENV DEBIAN_FRONTEND=noninteractive
+# 设置时区
+ENV TZ=Asia/Shanghai
+
 # 安装编译依赖
 RUN apt-get update && \
     apt-get install -y \
@@ -20,6 +25,10 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # RUN gcc --version
+
+# 设置时区
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone
 
 COPY wheels/linux/Python-3.10.16.tgz .
 
@@ -66,11 +75,6 @@ RUN mkdir -p /root/.cache/torch/hub/checkpoints && \
 RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple \
     && pip install -r api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple \
     && rm -rf /wheels
-
-# 设置时区
-ENV TZ=Asia/Shanghai
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
-    && echo $TZ > /etc/timezone
 
 # 暴露容器端口
 EXPOSE 22
