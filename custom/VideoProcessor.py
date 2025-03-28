@@ -1,15 +1,14 @@
+import cv2
 import json
 import math
+import numpy as np
 import os
 import shutil
 import subprocess
 import traceback
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
-
-import cv2
-import numpy as np
 from fastapi import UploadFile
+from pathlib import Path
 
 from custom.TextProcessor import TextProcessor
 from custom.file_utils import logging, add_suffix_to_filename
@@ -64,6 +63,9 @@ class VideoProcessor:
 
             # 使用 FFmpeg 转换帧率
             try:
+                # 提取关键颜色信息
+                pix_fmt, color_range, color_space, color_transfer, color_primaries = VideoProcessor.get_video_colorinfo(
+                    original_video_path)
                 # NVIDIA 编码器 codec="h264_nvenc"    CPU编码 codec="libx264"
                 # 创建 FFmpeg 命令来合成视频
                 cmd = [
@@ -71,6 +73,11 @@ class VideoProcessor:
                     "-i", video_path,
                     "-r", f"{target_fps}",  # 设置输出帧率
                     "-c:v", "libx264",  # 使用 libx264 编码器
+                    "-pix_fmt", pix_fmt,  # 设置像素格式
+                    "-color_range", color_range,  # 设置色彩范围
+                    "-colorspace", color_space,  # 设置色彩空间
+                    "-color_trc", color_transfer,  # 设置色彩传递特性
+                    "-color_primaries", color_primaries,  # 设置色彩基准
                     "-crf", "18",  # 设置压缩质量
                     "-preset", "slow",  # 设置编码速度/质量平衡
                     "-c:a", "aac",  # 设置音频编码器
