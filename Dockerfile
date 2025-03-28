@@ -32,6 +32,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
 
 # 安装 Python 3.10.16 到自定义路径
 # 使用 update-alternatives 设置 Python 3.10.16 为默认 Python 版本
+# https://mirrors.aliyun.com/python-release/
 COPY wheels/linux/Python-3.10.16.tgz .
 
 RUN tar -xzf Python-3.10.16.tgz \
@@ -47,6 +48,7 @@ RUN tar -xzf Python-3.10.16.tgz \
 # RUN python --version && pip --version
 
 # 下载并解压 FFmpeg
+# https://www.johnvansickle.com/ffmpeg
 COPY wheels/linux/ffmpeg-6.0.1-amd64-static.tar.xz .
 
 RUN tar -xJf ffmpeg-6.0.1-amd64-static.tar.xz -C /usr/local \
