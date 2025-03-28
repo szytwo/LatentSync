@@ -64,9 +64,6 @@ class VideoProcessor:
 
             # 使用 FFmpeg 转换帧率
             try:
-                # 提取关键颜色信息
-                pix_fmt, color_range, color_space, color_transfer, color_primaries = VideoProcessor.get_video_colorinfo(
-                    video_path)
                 # NVIDIA 编码器 codec="h264_nvenc"    CPU编码 codec="libx264"
                 # 创建 FFmpeg 命令来合成视频
                 cmd = [
@@ -74,11 +71,6 @@ class VideoProcessor:
                     "-i", video_path,
                     "-r", f"{target_fps}",  # 设置输出帧率
                     "-c:v", "libx264",  # 使用 libx264 编码器
-                    "-pix_fmt", pix_fmt,  # 设置像素格式
-                    "-color_range", color_range,  # 设置色彩范围
-                    "-colorspace", color_space,  # 设置色彩空间
-                    "-color_trc", color_transfer,  # 设置色彩传递特性
-                    "-color_primaries", color_primaries,  # 设置色彩基准
                     "-crf", "18",  # 设置压缩质量
                     "-preset", "slow",  # 设置编码速度/质量平衡
                     "-c:a", "aac",  # 设置音频编码器
@@ -88,6 +80,7 @@ class VideoProcessor:
                     "-y",
                     converted_video_path
                 ]
+                logging.info(f"执行 FFmpeg 命令: {' '.join(cmd)}")
                 # 执行 FFmpeg 命令
                 subprocess.run(cmd, capture_output=True, text=True, check=True)
 
@@ -163,6 +156,7 @@ class VideoProcessor:
         """获取视频文件的颜色信息"""
         # 获取原视频元数据
         video_metadata = VideoProcessor.get_video_metadata(media_path)
+        print(video_metadata)
         # 提取关键颜色信息
         pix_fmt = video_metadata.get("pix_fmt", "yuv420p")
         color_range = video_metadata.get("color_range", "1")
@@ -211,6 +205,7 @@ class VideoProcessor:
                 "-t", str(audio_duration),
                 output_path
             ]
+            logging.info(f"执行 FFmpeg 命令: {' '.join(cmd_trim)}")
             subprocess.run(cmd_trim, capture_output=True, text=True, check=True)
         else:
             logging.info(f"视频时长小于音频，正倒序重复拼接......")
@@ -232,6 +227,7 @@ class VideoProcessor:
                 "-preset", "slow",  # 设置编码速度/质量平衡
                 reversed_video
             ]
+            logging.info(f"执行 FFmpeg 命令: {' '.join(cmd_reverse)}")
             subprocess.run(cmd_reverse, capture_output=True, text=True, check=True)
             # 计算每个视频输入的有效时长（去掉前面的 offset）
             effective_video_duration = video_duration - offset_seconds
@@ -271,6 +267,7 @@ class VideoProcessor:
                 "-t", str(audio_duration),
                 output_path
             ]
+            logging.info(f"执行 FFmpeg 命令: {' '.join(cmd_concat)}")
             subprocess.run(cmd_concat, capture_output=True, text=True, check=True)
 
         return output_path
@@ -316,6 +313,7 @@ class VideoProcessor:
             "-y",
             output_video  # 输出文件路径
         ]
+        logging.info(f"执行 FFmpeg 命令: {' '.join(cmd)}")
         # 执行 FFmpeg 命令
         subprocess.run(cmd, capture_output=True, text=True, check=True)
 
@@ -366,6 +364,7 @@ class VideoProcessor:
                 "-y",
                 output_pattern  # 输出图片序列的文件模式
             ]
+            logging.info(f"执行 FFmpeg 命令: {' '.join(cmd)}")
             # 执行 FFmpeg 命令
             subprocess.run(cmd, capture_output=True, text=True, check=True)
             # 返回所有保存图片的路径

@@ -47,14 +47,14 @@ RUN tar -xzf Python-3.10.16.tgz \
 # RUN python --version && pip --version
 
 # 下载并解压 FFmpeg
-COPY wheels/linux/ffmpeg-master-latest-linux64-gpl.tar.xz .
+COPY wheels/linux/ffmpeg-6.0.1-amd64-static.tar.xz .
 
-RUN tar -xJf ffmpeg-master-latest-linux64-gpl.tar.xz -C /usr/local \
+RUN tar -xJf ffmpeg-6.0.1-amd64-static.tar.xz -C /usr/local \
     && mv /usr/local/ffmpeg-* /usr/local/ffmpeg \
-    && rm ffmpeg-master-latest-linux64-gpl.tar.xz
+    && rm ffmpeg-6.0.1-amd64-static.tar.xz
 
 # 设置 FFmpeg 到环境变量
-ENV PATH="/usr/local/ffmpeg/bin:${PATH}"
+ENV PATH="/usr/local/ffmpeg:${PATH}"
 
 # RUN ffmpeg -version
 
