@@ -156,7 +156,6 @@ class VideoProcessor:
         """获取视频文件的颜色信息"""
         # 获取原视频元数据
         video_metadata = VideoProcessor.get_video_metadata(media_path)
-        print(video_metadata)
         # 提取关键颜色信息
         pix_fmt = video_metadata.get("pix_fmt", "yuv420p")
         color_range = video_metadata.get("color_range", "1")
