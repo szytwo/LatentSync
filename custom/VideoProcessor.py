@@ -80,16 +80,16 @@ class VideoProcessor:
                     "-y",
                     converted_video_path
                 ]
-                logging.info(f"执行 FFmpeg 命令: {' '.join(cmd)}")
-                # 执行 FFmpeg 命令
+                logging.info(f"cmd: {' '.join(cmd)}")
                 subprocess.run(cmd, capture_output=True, text=True, check=True)
-
                 logging.info(f"视频转换完成: {converted_video_path}")
+
                 return converted_video_path, target_fps
             except subprocess.CalledProcessError as e:
                 # 捕获任何在处理过程中发生的异常
                 ex = Exception(f"Error ffmpeg: {e.stderr}")
                 TextProcessor.log_error(ex)
+
                 return None, None
         else:
             logging.info(f"视频帧率已经是 {target_fps} FPS，无需转换")
@@ -205,7 +205,7 @@ class VideoProcessor:
                 "-t", str(audio_duration),
                 output_path
             ]
-            logging.info(f"执行 FFmpeg 命令: {' '.join(cmd_trim)}")
+            logging.info(f"cmd: {' '.join(cmd_trim)}")
             subprocess.run(cmd_trim, capture_output=True, text=True, check=True)
         else:
             logging.info(f"视频时长小于音频，正倒序重复拼接......")
@@ -227,7 +227,7 @@ class VideoProcessor:
                 "-preset", "slow",  # 设置编码速度/质量平衡
                 reversed_video
             ]
-            logging.info(f"执行 FFmpeg 命令: {' '.join(cmd_reverse)}")
+            logging.info(f"cmd: {' '.join(cmd_reverse)}")
             subprocess.run(cmd_reverse, capture_output=True, text=True, check=True)
             # 计算每个视频输入的有效时长（去掉前面的 offset）
             effective_video_duration = video_duration - offset_seconds
@@ -267,7 +267,7 @@ class VideoProcessor:
                 "-t", str(audio_duration),
                 output_path
             ]
-            logging.info(f"执行 FFmpeg 命令: {' '.join(cmd_concat)}")
+            logging.info(f"cmd: {' '.join(cmd_concat)}")
             subprocess.run(cmd_concat, capture_output=True, text=True, check=True)
 
         return output_path
@@ -313,8 +313,7 @@ class VideoProcessor:
             "-y",
             output_video  # 输出文件路径
         ]
-        logging.info(f"执行 FFmpeg 命令: {' '.join(cmd)}")
-        # 执行 FFmpeg 命令
+        logging.info(f"cmd: {' '.join(cmd)}")
         subprocess.run(cmd, capture_output=True, text=True, check=True)
 
         return output_video
@@ -364,8 +363,7 @@ class VideoProcessor:
                 "-y",
                 output_pattern  # 输出图片序列的文件模式
             ]
-            logging.info(f"执行 FFmpeg 命令: {' '.join(cmd)}")
-            # 执行 FFmpeg 命令
+            logging.info(f"cmd: {' '.join(cmd)}")
             subprocess.run(cmd, capture_output=True, text=True, check=True)
             # 返回所有保存图片的路径
             save_paths = sorted([os.path.join(save_dir, f) for f in os.listdir(save_dir) if f.endswith(".png")])
