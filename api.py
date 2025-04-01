@@ -26,7 +26,7 @@ result_dir = './results'
 result_temp_dir = f'{result_dir}/temp'
 result_input_dir = f'{result_dir}/input'
 result_output_dir = f'{result_dir}/output'
-CONFIG_PATH = Path("configs/unet/second_stage.yaml")
+CONFIG_PATH = Path("configs/unet/stage2.yaml")
 CHECKPOINT_PATH = Path("checkpoints/latentsync_unet.pt")
 
 
