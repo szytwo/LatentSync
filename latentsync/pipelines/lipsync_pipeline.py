@@ -202,6 +202,7 @@ class LipsyncPipeline(DiffusionPipeline):
         latents = latents * self.scheduler.init_noise_sigma
         return latents
 
+    # noinspection PyTypeChecker
     def prepare_mask_latents(
             self, mask, masked_image, height, width, dtype, device, generator, do_classifier_free_guidance
     ):
@@ -231,6 +232,7 @@ class LipsyncPipeline(DiffusionPipeline):
         )
         return mask, masked_image_latents
 
+    # noinspection PyTypeChecker
     def prepare_image_latents(self, images, device, dtype, generator, do_classifier_free_guidance):
         images = images.to(device=device, dtype=dtype)
         image_latents = self.vae.encode(images).latent_dist.sample(generator=generator)
@@ -240,6 +242,7 @@ class LipsyncPipeline(DiffusionPipeline):
 
         return image_latents
 
+    # noinspection PyTypeChecker
     def set_progress_bar_config(self, **kwargs):
         if not hasattr(self, "_progress_bar_config"):
             self._progress_bar_config = {}
@@ -260,6 +263,20 @@ class LipsyncPipeline(DiffusionPipeline):
         images = (pixel_values * 255).to(torch.uint8)
         images = images.cpu().numpy()
         return images
+
+    def affine_transform_video_y(self, video_frames: np.ndarray):
+        faces = []
+        boxes = []
+        affine_matrices = []
+        print(f"Affine transforming {len(video_frames)} faces...")
+        for frame in tqdm.tqdm(video_frames):
+            face, box, affine_matrix = self.image_processor.affine_transform(frame)
+            faces.append(face)
+            boxes.append(box)
+            affine_matrices.append(affine_matrix)
+
+        faces = torch.stack(faces)
+        return faces, boxes, affine_matrices
 
     # noinspection PyTypeChecker
     def affine_transform_video(
@@ -328,8 +345,15 @@ class LipsyncPipeline(DiffusionPipeline):
         VideoProcessor.save_frame(i, out_frame, temp_dir)
 
     # noinspection PyTypeChecker
-    def restore_video(self, temp_dir, faces: torch.Tensor, video_frames: np.ndarray, boxes: list, affine_matrices: list,
-                      batch_size: int = 128):
+    def restore_video(
+            self,
+            temp_dir,
+            faces: torch.Tensor,
+            video_frames: np.ndarray,
+            boxes: list,
+            affine_matrices: list,
+            batch_size: int = 128
+    ):
         # video_frames = video_frames[: faces.shape[0]]
         total_faces = len(faces)
         print(f"Restoring {total_faces} faces...")
@@ -381,10 +405,11 @@ class LipsyncPipeline(DiffusionPipeline):
 
         return faces.shape[0]
 
+    # noinspection PyTypeChecker
     def loop_video(self, whisper_chunks: list, video_frames: np.ndarray):
         # If the audio is longer than the video, we need to loop the video
         if len(whisper_chunks) > len(video_frames):
-            faces, boxes, affine_matrices = self.affine_transform_video(video_frames)
+            faces, boxes, affine_matrices = self.affine_transform_video_y(video_frames)
             num_loops = math.ceil(len(whisper_chunks) / len(video_frames))
             loop_video_frames = []
             loop_faces = []
@@ -408,7 +433,7 @@ class LipsyncPipeline(DiffusionPipeline):
             affine_matrices = loop_affine_matrices[: len(whisper_chunks)]
         else:
             video_frames = video_frames[: len(whisper_chunks)]
-            faces, boxes, affine_matrices = self.affine_transform_video(video_frames)
+            faces, boxes, affine_matrices = self.affine_transform_video_y(video_frames)
 
         return video_frames, faces, boxes, affine_matrices
 
