@@ -134,6 +134,9 @@ class ImageProcessor:
                 placeholder_box = [0, 0, 0, 0]
 
                 return placeholder_face, placeholder_box, None
+            
+            #if not allow_multi_faces and len(detected_faces) > 1:
+            #    raise RuntimeError("More than one face detected")
             lm68 = detected_faces[0]
 
         points = self.smoother.smooth(lm68)

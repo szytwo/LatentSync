@@ -88,6 +88,7 @@ def main(config, args):
         width=config.data.resolution,
         height=config.data.resolution,
         max_duration=args.max_duration,
+        mask_image_path=config.data.mask_image_path,
     )
 
 

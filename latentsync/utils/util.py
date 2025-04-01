@@ -240,10 +240,10 @@ def reversed_forward(ddim_scheduler, pred_noise, timesteps, x_t):
 
 
 def next_step(
-        model_output: Union[torch.FloatTensor, np.ndarray],
-        timestep: int,
-        sample: Union[torch.FloatTensor, np.ndarray],
-        ddim_scheduler,
+    model_output: Union[torch.FloatTensor, np.ndarray],
+    timestep: int,
+    sample: Union[torch.FloatTensor, np.ndarray],
+    ddim_scheduler,
 ):
     timestep, next_timestep = (
         min(timestep - ddim_scheduler.config.num_train_timesteps // ddim_scheduler.num_inference_steps, 999),
