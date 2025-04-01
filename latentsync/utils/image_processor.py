@@ -80,6 +80,7 @@ class ImageProcessor:
         ]  # x means width, y means height
         return landmark_coordinates
 
+    # noinspection PyTypeChecker
     def preprocess_one_masked_image(self, image: torch.Tensor) -> np.ndarray:
         image = self.resize(image)
 
@@ -117,6 +118,7 @@ class ImageProcessor:
 
         return pixel_values, masked_pixel_values, mask
 
+    # noinspection PyTypeChecker
     def affine_transform(self, image: torch.Tensor, allow_multi_faces: bool = True) -> np.ndarray:
         # image = rearrange(image, "c h w-> h w c").numpy()
         if self.fa is None:
