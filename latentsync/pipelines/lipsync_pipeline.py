@@ -8,12 +8,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable, List, Optional, Union
 
+import numpy as np
 import torch
 import torchvision
 import tqdm
 from diffusers.configuration_utils import FrozenDict
 from diffusers.models import AutoencoderKL
-from diffusers.pipeline_utils import DiffusionPipeline
+from diffusers.pipelines import DiffusionPipeline
 from diffusers.schedulers import (
     DDIMScheduler,
     DPMSolverMultistepScheduler,
@@ -41,18 +42,18 @@ class LipsyncPipeline(DiffusionPipeline):
     _optional_components = []
 
     def __init__(
-        self,
-        vae: AutoencoderKL,
-        audio_encoder: Audio2Feature,
-        denoising_unet: UNet3DConditionModel,
-        scheduler: Union[
-            DDIMScheduler,
-            PNDMScheduler,
-            LMSDiscreteScheduler,
-            EulerDiscreteScheduler,
-            EulerAncestralDiscreteScheduler,
-            DPMSolverMultistepScheduler,
-        ],
+            self,
+            vae: AutoencoderKL,
+            audio_encoder: Audio2Feature,
+            denoising_unet: UNet3DConditionModel,
+            scheduler: Union[
+                DDIMScheduler,
+                PNDMScheduler,
+                LMSDiscreteScheduler,
+                EulerDiscreteScheduler,
+                EulerAncestralDiscreteScheduler,
+                DPMSolverMultistepScheduler,
+            ],
     ):
         super().__init__()
 
@@ -87,7 +88,7 @@ class LipsyncPipeline(DiffusionPipeline):
             version.parse(denoising_unet.config._diffusers_version).base_version
         ) < version.parse("0.9.0.dev0")
         is_unet_sample_size_less_64 = (
-            hasattr(denoising_unet.config, "sample_size") and denoising_unet.config.sample_size < 64
+                hasattr(denoising_unet.config, "sample_size") and denoising_unet.config.sample_size < 64
         )
         if is_unet_version_less_0_9_0 and is_unet_sample_size_less_64:
             deprecation_message = (
@@ -141,9 +142,9 @@ class LipsyncPipeline(DiffusionPipeline):
             return self.device
         for module in self.denoising_unet.modules():
             if (
-                hasattr(module, "_hf_hook")
-                and hasattr(module._hf_hook, "execution_device")
-                and module._hf_hook.execution_device is not None
+                    hasattr(module, "_hf_hook")
+                    and hasattr(module._hf_hook, "execution_device")
+                    and module._hf_hook.execution_device is not None
             ):
                 return torch.device(module._hf_hook.execution_device)
         return self.device
@@ -178,7 +179,7 @@ class LipsyncPipeline(DiffusionPipeline):
             raise ValueError(f"`height` and `width` have to be divisible by 8 but are {height} and {width}.")
 
         if (callback_steps is None) or (
-            callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
+                callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
         ):
             raise ValueError(
                 f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
@@ -202,7 +203,7 @@ class LipsyncPipeline(DiffusionPipeline):
         return latents
 
     def prepare_mask_latents(
-        self, mask, masked_image, height, width, dtype, device, generator, do_classifier_free_guidance
+            self, mask, masked_image, height, width, dtype, device, generator, do_classifier_free_guidance
     ):
         # resize the mask to latents shape as we concatenate the mask to the latents
         # we do that before converting to dtype to avoid breaking in case we're using cpu_offload
@@ -327,7 +328,8 @@ class LipsyncPipeline(DiffusionPipeline):
         VideoProcessor.save_frame(i, out_frame, temp_dir)
 
     # noinspection PyTypeChecker
-    def restore_video(self, temp_dir, faces: torch.Tensor, video_frames: np.ndarray, boxes: list, affine_matrices: list, batch_size: int = 128):
+    def restore_video(self, temp_dir, faces: torch.Tensor, video_frames: np.ndarray, boxes: list, affine_matrices: list,
+                      batch_size: int = 128):
         # video_frames = video_frames[: faces.shape[0]]
         total_faces = len(faces)
         print(f"Restoring {total_faces} faces...")
@@ -409,31 +411,31 @@ class LipsyncPipeline(DiffusionPipeline):
             faces, boxes, affine_matrices = self.affine_transform_video(video_frames)
 
         return video_frames, faces, boxes, affine_matrices
-    
+
     # noinspection PyTypeChecker
     @torch.no_grad()
     def __call__(
-        self,
-        video_path: str,
-        audio_path: str,
-        video_out_path: str,
-        video_mask_path: str = None,
-        num_frames: int = 16,
-        video_fps: int = 25,
-        max_duration: int = 20,
-        audio_sample_rate: int = 16000,
-        height: Optional[int] = None,
-        width: Optional[int] = None,
-        num_inference_steps: int = 20,
-        guidance_scale: float = 1.5,
-        weight_dtype: Optional[torch.dtype] = torch.float16,
-        eta: float = 0.0,
-        mask: str = "fix_mask",
-        mask_image_path: str = "latentsync/utils/mask.png",
-        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
-        callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
-        callback_steps: Optional[int] = 1,
-        **kwargs,
+            self,
+            video_path: str,
+            audio_path: str,
+            video_out_path: str,
+            video_mask_path: str = None,
+            num_frames: int = 16,
+            video_fps: int = 25,
+            max_duration: int = 20,
+            audio_sample_rate: int = 16000,
+            height: Optional[int] = None,
+            width: Optional[int] = None,
+            num_inference_steps: int = 20,
+            guidance_scale: float = 1.5,
+            weight_dtype: Optional[torch.dtype] = torch.float16,
+            eta: float = 0.0,
+            mask: str = "fix_mask",
+            mask_image_path: str = "latentsync/utils/mask.png",
+            generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
+            callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
+            callback_steps: Optional[int] = 1,
+            **kwargs,
     ):
         is_train = self.denoising_unet.training
         self.denoising_unet.eval()
@@ -483,9 +485,6 @@ class LipsyncPipeline(DiffusionPipeline):
         # 4. Prepare extra step kwargs.
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
-
-
-
         synced_video_frames = []
         masked_video_frames = []
 
@@ -511,7 +510,7 @@ class LipsyncPipeline(DiffusionPipeline):
               f"{num_inferences} num_inferences, "
               f"{num_frames} num_frames "
               f"...")
-        
+
         for i in tqdm.tqdm(range(num_inferences), desc="Doing inference..."):
             start_frames = i * num_frames
             end_frames = (i + 1) * num_frames
