@@ -28,6 +28,7 @@ __pycache__/
 /wheels/win/
 /deploy/
 /deploy01/
+/checkpoints1.0/
 
 # data files
 *.bat

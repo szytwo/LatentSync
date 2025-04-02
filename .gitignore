@@ -45,6 +45,7 @@ wandb/
 
 !/latentsync/utils/mask*.png
 /checkpoints/
+/checkpoints1.0/
 !/assets/*
 !/docs/*
 !/internal/*.png
