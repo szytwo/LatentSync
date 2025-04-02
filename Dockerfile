@@ -1,4 +1,5 @@
 # 使用 PyTorch 官方 CUDA 12.1 运行时镜像
+# https://hub.docker.com/r/pytorch/pytorch/tags
 FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 
 # 设置容器内工作目录为 /workspace
