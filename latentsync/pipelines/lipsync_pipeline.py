@@ -357,12 +357,9 @@ class LipsyncPipeline(DiffusionPipeline):
         # 获取 CPU 核心数
         max_workers = os.cpu_count() / 2
         # 分批并行读取
-        for i in range(0, total_faces, batch_size):
+        for i in tqdm.tqdm(range(0, total_faces, batch_size)):
             # 当前批次的数据
             batch_faces = faces[i:i + batch_size]
-
-            print(f"Restoring {i} to {i + len(batch_faces)} faces...")
-
             batch_boxes = boxes[i:i + batch_size]
             batch_affine_matrices = affine_matrices[i:i + batch_size]
             batch_video_frames = video_frames[i:i + batch_size]
@@ -370,8 +367,8 @@ class LipsyncPipeline(DiffusionPipeline):
 
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = []
-                for idx, (face, original_frame, boxe, affine_matrice) in enumerate(
-                        zip(batch_faces, batch_original_frames, batch_boxes, batch_affine_matrices)):
+                for idx, (face, original_frame, boxe, affine_matrice) in tqdm.tqdm(enumerate(
+                        zip(batch_faces, batch_original_frames, batch_boxes, batch_affine_matrices))):
                     x1, y1, x2, y2 = boxe
                     height = int(y2 - y1)
                     width = int(x2 - x1)
