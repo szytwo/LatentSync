@@ -551,8 +551,6 @@ class LipsyncPipeline(DiffusionPipeline):
             inference_faces = faces[start_frames: end_frames]
             latents = all_latents[:, :, start_frames: end_frames]
 
-            print(f"Doing inference({i}): {start_frames} to {start_frames + len(inference_faces)} faces")
-
             ref_pixel_values, masked_pixel_values, masks = self.image_processor.prepare_masks_and_masked_images(
                 inference_faces, affine_transform=False
             )
