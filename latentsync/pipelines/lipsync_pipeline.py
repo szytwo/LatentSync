@@ -302,13 +302,10 @@ class LipsyncPipeline(DiffusionPipeline):
         affine_matrices = []
         print(f"Affine transforming {video_frames_len} make up {video_frames_total_len} faces ...")
         # 按批处理
-        for i in range(0, video_frames_len, batch_size):
+        for i in tqdm.tqdm(range(0, video_frames_len, batch_size)):
             batch_files = video_frames[i: i + batch_size]
-
-            print(f"Affine transforming {i} to {i + len(batch_files)} faces...")
-
             batch_frames = VideoProcessor.read_imgs_cv2_parallel(batch_files)
-            for frame in batch_frames:
+            for frame in tqdm.tqdm(batch_frames):
                 face, box, affine_matrix = self.image_processor.affine_transform(frame)
                 faces.append(face)
                 boxes.append(box)
@@ -325,7 +322,7 @@ class LipsyncPipeline(DiffusionPipeline):
         affine_matrices = []
 
         print(f"make up {video_frames_total_len} faces ...")
-        for i in range(0, video_frames_total_len):
+        for i in tqdm.tqdm(range(0, video_frames_total_len)):
             index = i % len(faces_cycle)
             faces.append(faces_cycle[index])
             video_frames.append(video_frames_cycle[index])
