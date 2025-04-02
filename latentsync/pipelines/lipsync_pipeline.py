@@ -367,8 +367,10 @@ class LipsyncPipeline(DiffusionPipeline):
 
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = []
-                for idx, (face, original_frame, boxe, affine_matrice) in tqdm.tqdm(enumerate(
-                        zip(batch_faces, batch_original_frames, batch_boxes, batch_affine_matrices))):
+                for idx, (face, original_frame, boxe, affine_matrice) in tqdm.tqdm(
+                        enumerate(zip(batch_faces, batch_original_frames, batch_boxes, batch_affine_matrices)),
+                        total=len(batch_faces)
+                ):
                     x1, y1, x2, y2 = boxe
                     height = int(y2 - y1)
                     width = int(x2 - x1)
