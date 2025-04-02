@@ -117,6 +117,8 @@ class LipsyncPipeline(DiffusionPipeline):
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
 
         self.set_progress_bar_config(desc="Steps")
+        # 检查 TQDM_DISABLE 是否被设置
+        self.disable_tqdm = os.environ.get("TQDM_DISABLE", "0") == "1"
 
     def enable_vae_slicing(self):
         self.vae.enable_slicing()
@@ -304,6 +306,10 @@ class LipsyncPipeline(DiffusionPipeline):
         # 按批处理
         for i in tqdm.tqdm(range(0, video_frames_len, batch_size)):
             batch_files = video_frames[i: i + batch_size]
+
+            if self.disable_tqdm:
+                print(f"Affine transforming {i} to {i + len(batch_files)} faces...")
+
             batch_frames = VideoProcessor.read_imgs_cv2_parallel(batch_files)
             for frame in tqdm.tqdm(batch_frames):
                 face, box, affine_matrix = self.image_processor.affine_transform(frame)
@@ -363,6 +369,10 @@ class LipsyncPipeline(DiffusionPipeline):
             batch_boxes = boxes[i:i + batch_size]
             batch_affine_matrices = affine_matrices[i:i + batch_size]
             batch_video_frames = video_frames[i:i + batch_size]
+
+            if self.disable_tqdm:
+                print(f"Restoring {i} to {i + len(batch_faces)} faces...")
+
             batch_original_frames = VideoProcessor.read_imgs_cv2_parallel(batch_video_frames)
 
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -546,6 +556,9 @@ class LipsyncPipeline(DiffusionPipeline):
                 audio_embeds = None
             inference_faces = faces[start_frames: end_frames]
             latents = all_latents[:, :, start_frames: end_frames]
+
+            if self.disable_tqdm:
+                print(f"Doing inference({i}): {start_frames} to {start_frames + len(inference_faces)} faces")
 
             ref_pixel_values, masked_pixel_values, masks = self.image_processor.prepare_masks_and_masked_images(
                 inference_faces, affine_transform=False
