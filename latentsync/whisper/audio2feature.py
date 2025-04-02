@@ -10,23 +10,25 @@ from .whisper import load_model
 
 class Audio2Feature:
     def __init__(
-        self,
-        model_path="checkpoints/whisper/tiny.pt",
-        device=None,
-        audio_embeds_cache_dir=None,
-        num_frames=16,
-        audio_feat_length=[2, 2],
+            self,
+            model_path="checkpoints/whisper/tiny.pt",
+            device=None,
+            audio_embeds_cache_dir=None,
+            num_frames=16,
+            audio_feat_length=[2, 2],
     ):
         self.model = load_model(model_path, device)
         self.audio_embeds_cache_dir = audio_embeds_cache_dir
         self.num_frames = num_frames
         self.embedding_dim = self.model.dims.n_audio_state
+        self.audio_feat_length = audio_feat_length
 
     def get_sliced_feature(self, feature_array, vid_idx, fps=25):
         """
         Get sliced features based on a given index
         :param feature_array:
         :param start_idx: the start index of the feature
+        :param audio_feat_length:
         :return:
         """
         length = len(feature_array)
@@ -54,6 +56,7 @@ class Audio2Feature:
         Get sliced features based on a given index
         :param feature_array:
         :param start_idx: the start index of the feature
+        :param audio_feat_length:
         :return:
         """
         length = len(feature_array)
@@ -125,7 +128,7 @@ class Audio2Feature:
 
         if os.path.isfile(audio_embeds_cache_path):
             try:
-                audio_feat = torch.load(audio_embeds_cache_path)
+                audio_feat = torch.load(audio_embeds_cache_path, weights_only=True)
             except Exception as e:
                 print(f"{type(e).__name__} - {e} - {audio_embeds_cache_path}")
                 os.remove(audio_embeds_cache_path)
