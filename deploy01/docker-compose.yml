@@ -4,7 +4,7 @@ networks:
 
 services:
   latentsync:
-    image: latentsync1.5:latest
+    image: latentsync:1.5
     container_name: latentsync-01
     restart: always
     runtime: nvidia
