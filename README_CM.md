@@ -8,8 +8,8 @@ conda activate ./venv
 pip install -r ./api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 docker build -t latentsync:1.5 .  # 构建镜像
-docker load -i latentsync1.5.tar # 导入镜像
-docker save -o latentsync1.5.tar latentsync:1.5 # 导出镜像
+docker load -i latentsync-1.5.tar # 导入镜像
+docker save -o latentsync-1.5.tar latentsync:1.5 # 导出镜像
 docker-compose up -d # 后台运行容器
 
 ```
