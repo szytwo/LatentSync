@@ -7,9 +7,10 @@ conda activate ./venv
 
 pip install -r ./api_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-docker build -t latentsync1.5:latest .  #构建镜像
-
-docker-compose up -d #后台运行容器
+docker build -t latentsync1.5:latest .  # 构建镜像
+docker load -i latentsync1.5.tar # 导入镜像
+docker save -o latentsync1.5.tar latentsync1.5:latest # 导出镜像
+docker-compose up -d # 后台运行容器
 
 ```
 
