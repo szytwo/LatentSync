@@ -109,7 +109,7 @@ class VideoProcessor:
             "-hide_banner",
             "-loglevel", "error"
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
         try:
             metadata = json.loads(result.stdout)
