@@ -3,7 +3,7 @@ networks:
     driver: bridge
 
 services:
-  latentsync:
+  latentsync-01:
     image: latentsync:1.5
     container_name: latentsync-01
     restart: always
